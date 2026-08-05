@@ -1,5 +1,10 @@
 # XP Union Vault — Stake XP. Burn the rest.
 
+[![ci](https://github.com/xpherechain/stake.x-phere.com/actions/workflows/ci.yml/badge.svg)](https://github.com/xpherechain/stake.x-phere.com/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![chain](https://img.shields.io/badge/chain-Xphere%20mainnet-orange)](https://stake.x-phere.com/status.html)
+[![site](https://img.shields.io/badge/live-stake.x--phere.com-e7453a)](https://stake.x-phere.com)
+
 Non-custodial staking vault for the Xphere network. Real rewards earned by the
 foundation's Union validator node flow into the vault every day — **60% streams
 to stakers, 40%+ is burned forever**. Staker principal is never deployed,
