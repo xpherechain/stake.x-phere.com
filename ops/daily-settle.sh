@@ -62,6 +62,13 @@ if [ -n "${COLLECTOR_PK:-}" ]; then
 fi
 
 # 2) settle (에폭 경과 + minSettle 충족 시)
+#    SETTLE_HOUR_UTC 설정 시 해당 UTC 시각의 크론 슬롯에서만 정산한다
+#    (예: 0 → 매일 00:00 UTC = 09:00 KST 앵커). 비우면 매 슬롯 시도.
+if [ -n "${SETTLE_HOUR_UTC:-}" ] && [ "$(date -u +%-H)" != "${SETTLE_HOUR_UTC}" ]; then
+  log "settle deferred to ${SETTLE_HOUR_UTC}:00 UTC slot"
+  log "done"
+  exit 0
+fi
 #    드리프트 방지: 정산 tx가 크론 시작보다 몇 초 늦게 체결되므로, 다음날
 #    크론은 항상 몇 초 못 미쳐 스킵하고 정산이 매일 한 슬롯(2h)씩 밀린다.
 #    가능 시각이 5분 이내로 임박했으면 그만큼 기다렸다가 진행한다.
