@@ -46,6 +46,8 @@ PY
 
 # push (repo 여야만; 실패해도 정산에 영향 없음)
 if git -C "$REPO_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+  # origin이 앞서 있으면 push가 거부되므로 먼저 rebase (통계 append라 충돌 없음)
+  git -C "$REPO_DIR" pull --rebase origin main >/dev/null 2>&1 || true
   git -C "$REPO_DIR" add web/data/stats.json
   git -C "$REPO_DIR" -c user.name="xp-keeper" -c user.email="7077523+jabiers@users.noreply.github.com" \
     commit -m "chore(data): daily settlement stats" >/dev/null 2>&1 || true
