@@ -1731,7 +1731,7 @@ pre,
 .wm-item.danger { color: var(--ember); }
 
 /* ============================================================
-   burn theatre — the burn card is the stage
+   burn band
    ============================================================ */
 .stat.burn {
   position: relative;
@@ -1832,7 +1832,7 @@ pre,
 .share-row .btn { width: auto; padding: 0.45rem 1.1rem; font-size: 0.85rem; }
 
 /* ============================================================
-   v13 — burn band: burned + burning, front and center
+   v13 — burn band: settled + accruing figures
    ============================================================ */
 .stat-row.two { grid-template-columns: repeat(2, 1fr); }
 

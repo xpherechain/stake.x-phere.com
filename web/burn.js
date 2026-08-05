@@ -1,7 +1,7 @@
 /* ============================================================
-   XP Burn theatre — full-screen live burn counter, daily chart,
-   and burn log. Counter reads the chain; history reads the daily
-   stats feed (data/stats.json) written by the keeper.
+   Burn page — live burn counter, daily chart, and burn log.
+   Counter reads the chain; history reads the daily stats feed
+   (data/stats.json) written by the keeper.
    ============================================================ */
 (() => {
   "use strict";
@@ -61,7 +61,7 @@
       /* keep last values; retry on next cycle */
     }
   }
-  // 100ms tick — the last digits visibly roll, like a meter running
+  // 100ms tick for a smooth digit roll
   setInterval(() => {
     if (rate <= 0 || !anchor) return;
     const elapsed = Date.now() / 1000 - anchor;

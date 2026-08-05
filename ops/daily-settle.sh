@@ -34,7 +34,7 @@ PY
 }
 
 # 1) 스윕 (경로 B: COLLECTOR_PK 있을 때만)
-#    SWEEP_LIMIT_WEI = "에폭당 투입 예산" — 가드런치 정책 C(부분 스윕).
+#    SWEEP_LIMIT_WEI = "에폭당 투입 예산" — 부분 스윕 모드.
 #    Distributor 대기 잔고가 예산에 찰 때까지만 채운다. settle이 하루 1번
 #    잔고를 소진하므로 자연히 '하루 SWEEP_LIMIT_WEI'가 강제된다.
 #    (크론이 2시간마다 돌아도 예산 초과 투입이 불가능)

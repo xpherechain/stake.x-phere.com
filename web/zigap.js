@@ -1,9 +1,7 @@
 /* ============================================================
-   ZIGAP wallet bridge — QR login + QR transaction signing via the
-   ZIGAP mobile app (zigap-utils React components), mounted as a tiny
-   React island inside this vanilla-JS site. Libraries are loaded
-   lazily from esm.sh only when the user picks ZIGAP, so regular
-   visitors pay zero cost.
+   ZIGAP wallet bridge — QR login and QR transaction signing via the
+   ZIGAP mobile app (zigap-utils React components). Libraries load on
+   demand from esm.sh only when the user selects ZIGAP.
 
    Exposes window.ZigapBridge = { login(), sendTx(tx, label), close() }
    ============================================================ */

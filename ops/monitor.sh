@@ -49,7 +49,7 @@ if python3 -c "exit(0 if $held < $oblig else 1)"; then
 fi
 
 # ③ 수령지갑 잔고 누적(스윕 실패/부재 징후) — 임계 초과 시 알림
-#    정책 C(부분 스윕)에선 어느 정도 누적이 정상이므로 임계는 넉넉히.
+#    부분 스윕 모드에선 어느 정도 누적이 정상이므로 임계는 넉넉히.
 COLLECTOR_ALERT_WEI="${COLLECTOR_ALERT_WEI:-100000000000000000000000}" # 100,000 XP
 if [ -n "${COLLECTOR_PK:-}" ]; then
   cb=$(cast balance "$(cast wallet address --private-key "$COLLECTOR_PK")" --rpc-url "$RPC")

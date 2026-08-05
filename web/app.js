@@ -67,11 +67,10 @@
   const pidOf = (slug) => E.id(slug);
 
   // ---- referral capture (redirect model) ----
-  // Partners redirect users here with ?ref=<slug>. The slug is captured once,
-  // validated against the registered-partner allowlist, stored for 30 days,
-  // and applied automatically on deposit. There is deliberately NO manual
-  // input — attribution can only arrive via the referring site's URL.
-  // (On-chain, the user's first deposit fixes their bucket permanently.)
+  // Captures ?ref=<slug>, validates it against the registered-partner
+  // allowlist, stores it for 30 days, and applies it on deposit. No manual
+  // input; attribution comes only from the referring URL. On-chain, the
+  // user's first deposit fixes their bucket permanently.
   const REF_KEY = "xp.ref";
   const REF_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30-day attribution window
   function captureReferral() {
@@ -165,10 +164,8 @@
   let burnNextTs = 0;
   let burnQueued = 0;
 
-  // Live burn accrual: the node earns every second, and the burn share of
-  // today's inflow accrues with it. We tick the counter at that rate —
-  // confirmed on-chain total + today's accrual — self-calibrated from the
-  // last settlement's size (no hardcoded numbers), reconciled on refresh.
+  // Burn accrual estimate: confirmed on-chain total plus today's accrual
+  // at the last-settlement run-rate; reconciled against the chain on refresh.
   let burnConfirmed = 0; // totalBurned on-chain (XP)
   let burnRatePerSec = 0; // today's burn accruing per second (XP/s)
   let burnAnchorTs = 0; // last settle timestamp
@@ -196,8 +193,7 @@
     }, 500);
   }
 
-  // Live-earnings ticker state: rewards accrue every second on-chain; we
-  // interpolate between RPC reads so the user can watch their number grow.
+  // Earnings ticker state: on-chain accrual interpolated between RPC reads.
   let lastTvl = 0; // total staked (XP)
   let rrXPs = 0; // global rewardRate in XP/second
   let rrFinish = 0; // periodFinish timestamp
@@ -219,7 +215,7 @@
     }, 1000);
   }
 
-  // ---- burn theatre: live countdown to the next settle/burn ----
+  // ---- next-burn countdown ----
   function wireBurnCountdown() {
     const el = $('[data-metric="burnNext"]');
     if (!el) return;
@@ -240,7 +236,7 @@
     }, 1000);
   }
 
-  // ---- burn theatre: rising ember particles inside the burn card ----
+  // ---- ember particle canvas (burn band) ----
   function wireBurnEmbers() {
     const card = $(".burnband");
     if (!card || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -343,8 +339,8 @@
         burned: Number(E.formatEther(burned)),
         cap: Number(E.formatEther(cap)),
       });
-      // Next-burn countdown: what's queued in the distributor, and the share
-      // of it that will burn at the current utilization (truthful projection).
+      // Next-burn countdown: distributor queue and its burn share at the
+      // current utilization.
       const tvlN = Number(E.formatEther(tvl));
       const capN = Number(E.formatEther(cap));
       const pendN = Number(E.formatEther(pending));
@@ -364,7 +360,7 @@
     updateEstimate();
     animateTo($('[data-metric="tvl"]'), tvl, (n) => fmtNum(n) + " XP");
     animateTo($('[data-metric="apr"]'), apr * 100, (n) => n.toFixed(2) + "%");
-    // full number (not 1.4K) — sits beside the accrual figure in the band
+    // full (non-compact) number; shown next to the accrual figure
     animateTo($('[data-metric="burned"]'), burned, (n) => Math.round(n).toLocaleString("en-US") + " XP");
     $$('[data-tk="tvl"]').forEach((e) => (e.textContent = fmtNum(tvl) + " XP"));
     $$('[data-tk="apr"]').forEach((e) => (e.textContent = (apr * 100).toFixed(2) + "%"));
@@ -601,8 +597,7 @@
     }
   }
 
-  // One continuous flow: every primary CTA reflects the wallet state, so the
-  // user never has to hunt for the nav Connect button first.
+  // Primary CTAs reflect wallet connection state.
   function refreshCtas() {
     const on = !!signer || walletMode === "zigap";
     const hero = $("#heroCta");
@@ -710,7 +705,7 @@
   // ============================================================
   function needWallet() {
     if (!signer && walletMode !== "zigap") {
-      // Not connected → the button said "Connect wallet"; open the chooser.
+      // not connected — open the connect chooser
       openChooser();
       return true;
     }
@@ -858,8 +853,7 @@
     }
   }
 
-  // After a successful stake, hand the user a ready-made share post —
-  // every staker becomes a distribution channel.
+  // Show a prefilled share link after a successful stake.
   function showShare(amt) {
     const row = $("#shareRow");
     if (!row) return;
@@ -907,8 +901,8 @@
     );
   }
 
-  // Stake-panel niceties: MAX fills the wallet balance (minus a gas buffer),
-  // and a live "≈ earns X / year" estimate makes the APR tangible.
+  // Stake panel: MAX button (balance minus gas buffer) and a live
+  // per-year earnings estimate.
   function updateEstimate() {
     const input = $("#depAmount");
     const note = $("#estNote");
