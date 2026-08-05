@@ -62,6 +62,16 @@ if [ -n "${COLLECTOR_PK:-}" ]; then
 fi
 
 # 2) settle (에폭 경과 + minSettle 충족 시)
+#    드리프트 방지: 정산 tx가 크론 시작보다 몇 초 늦게 체결되므로, 다음날
+#    크론은 항상 몇 초 못 미쳐 스킵하고 정산이 매일 한 슬롯(2h)씩 밀린다.
+#    가능 시각이 5분 이내로 임박했으면 그만큼 기다렸다가 진행한다.
+NEXT_TS=$(cast call "$DIST" "nextSettleTime()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
+NOW_TS=$(date -u +%s)
+WAIT=$((NEXT_TS - NOW_TS))
+if [ "$WAIT" -gt 0 ] && [ "$WAIT" -le 300 ]; then
+  log "settle eligible in ${WAIT}s — waiting"
+  sleep $((WAIT + 3))
+fi
 READ=$(cast call "$DIST" "canSettle()(bool,string)" --rpc-url "$RPC")
 OK=$(echo "$READ" | head -1 | awk '{print $1}')
 if [ "$OK" = "true" ]; then
