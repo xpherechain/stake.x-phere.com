@@ -24,7 +24,9 @@ coordinated disclosure before sharing details publicly.
 ## Design notes for researchers
 
 - Vault logic is immutable (no proxies). Parameter changes go through a
-  48-hour on-chain timelock within immutable bounds.
+  48-hour on-chain timelock; cooldown, reward duration and epoch additionally
+  have immutable bounds, while the stake cap, split ratio and minimum
+  settlement amount are timelocked only (see README → Governance & limits).
 - Principal and reward accounting are separate ledgers; the core solvency
   invariant is `WXP.balanceOf(vault) ≥ staked + pendingRedeem + rewardReserves`
   (checked live at [stake.x-phere.com/status.html](https://stake.x-phere.com/status.html)).

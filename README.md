@@ -6,9 +6,10 @@
 [![site](https://img.shields.io/badge/live-stake.x--phere.com-e7453a)](https://stake.x-phere.com)
 
 Non-custodial staking vault for the Xphere network. Real rewards earned by the
-foundation's Union validator node flow into the vault every day — **60% streams
-to stakers, 40%+ is burned forever**. Staker principal is never deployed,
-re-delegated, or touched.
+foundation's Union validator node flow into the vault every day — at the current
+parameters **60% streams to stakers and 40%+ is burned**, permanently and
+verifiably on-chain. Staker principal is never deployed, re-delegated, or
+touched.
 
 **Live:** [stake.x-phere.com](https://stake.x-phere.com) ·
 [status & proof of solvency](https://stake.x-phere.com/status.html) ·
@@ -34,9 +35,12 @@ Union validator revenue (native XP)
 - **Non-custodial** — principal and rewards are separate ledgers; even if
   rewards stopped entirely, 100% of principal remains withdrawable
   (7-day cooldown, two-step async redeem).
-- **Immutable logic** — no proxies. Operational parameters (cap, cooldown,
-  split, epoch) are tunable only through a 48-hour on-chain timelock, within
-  immutable bounds fixed at deployment.
+- **Immutable logic** — no proxies, no upgradeability. Operational parameters
+  are governed by a 48-hour on-chain timelock. Cooldown, reward-stream length
+  and settlement epoch are additionally constrained by immutable bounds fixed
+  at deployment (e.g. cooldown can never exceed 30 days); the stake cap, the
+  staker/burn split and the minimum settlement amount are timelocked but
+  **not** bounded in the contract — see [Governance & limits](#governance--limits).
 
 ## Deployed contracts (Xphere mainnet, chainId 20250217)
 
@@ -72,6 +76,34 @@ forge build
 forge test        # 113 tests, 97%+ line coverage on core contracts
 slither src/      # static analysis — see docs/SECURITY_SLITHER.md
 ```
+
+## Governance & limits
+
+Full transparency about what governance can and cannot do:
+
+| Parameter | Setter | Delay | Hard bound in code |
+|---|---|---|---|
+| Unstake cooldown | `setCooldownPeriod` | 48h timelock | ✅ ≤ 30 days (immutable), never retroactive |
+| Reward stream length | `setRewardsDuration` | 48h timelock | ✅ 1h – 30 days (immutable) |
+| Settlement epoch | `setEpochDuration` | 48h timelock | ✅ 1h – 30 days (immutable) |
+| Stake cap | `setStakeCap` | 48h timelock | ⚠️ none — also the reward denominator |
+| Staker/burn split | `setDistributionRatio` | 48h timelock | ⚠️ 0–100% (no floor on the burn) |
+| Minimum settlement | `setMinSettleAmount` | 48h timelock | ⚠️ none |
+| Pause deposits | `pause` | **immediate** | withdrawals are never pausable |
+| Partner attribution | `registerPartner`, `reassignUserPartner` | **immediate** | cannot touch principal or rewards |
+
+What governance **cannot** do, enforced by code:
+
+- Move, borrow or redirect staker principal — `recoverERC20` rejects the vault
+  asset, and no other path transfers it out except a user's own claim.
+- Block withdrawals — `pause` gates deposits only; `requestRedeem`,
+  `claimRedeem*` and `claimReward*` carry no pause modifier.
+- Retroactively extend a pending unstake — `claimableAt` is fixed when the
+  request is created.
+- Mint, dilute or seize shares — shares are non-transferable and every mint is
+  exactly `assets × 1000`.
+- Upgrade or replace the logic — there is no proxy, `delegatecall` or
+  `selfdestruct` anywhere in `src/`.
 
 ## Security model
 

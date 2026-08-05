@@ -669,8 +669,8 @@ Phase 2에서 first-depositor front-run PoC + 비배수 셰어 fuzz로 검증한
 ### 7.5 접근 제어·거버넌스 리스크
 
 - `DISTRIBUTOR_ROLE` 탈취 시: 가짜 notify를 시도해도 **실잔고 담보 검증**(`balanceOf − 원금·pending·reserves ≥ reward`)에서 revert — 실물 WXP를 먼저 전송하지 않는 한 rewardRate를 1 wei도 부풀릴 수 없다. 원금은 어떤 역할로도 인출 불가(관리자 원금 접근 함수 부재 — 러그 벡터 원천 제거. `sweepUnallocatedRewards`도 좌초 보상 카운터 한도 내에서만 동작).
-- `PARAM_ADMIN` 남용: cooldown 상한(`maxCooldown` immutable) + 소급 금지, cap 하향은 신규 입금만 차단 → 유저 자금 인질 시나리오 없음.
-- `PARTNER_MANAGER` 남용: `reassignUserPartner`는 TVL 귀속(오프체인 커미션 데이터)만 바꾸며 유저 원금·보상에는 접근 불가. 타임락 경유 실행 권장.
+- `PARAM_ADMIN` 남용: cooldown 상한(`maxCooldown` immutable) + 소급 금지 → **원금 인질 시나리오 없음**(인출 경로는 pause 대상도 아님). 단, cap은 예치 한도인 동시에 **정산식의 분모**이므로 `setStakeCap(0)`은 신규 입금 차단에 그치지 않고 `RewardDistributor.settle()`의 `distributed`를 0으로 만들어 **이후 전액 소각**이 된다(원금·기적립 보상은 무영향). `setDistributionRatio`(0~100%)·`setMinSettleAmount`(무상한)도 컨트랙트 경계가 없어, 세 파라미터는 48h 타임락 공시에만 의존한다 — 차기 배포 시 경계 추가 권장.
+- `PARTNER_MANAGER` 남용: `reassignUserPartner`는 TVL 귀속(오프체인 커미션 데이터)만 바꾸며 유저 원금·보상에는 접근 불가. ⚠️ 현 메인넷 배포는 이 역할이 **타임락이 아닌 EOA 직결**이라 즉시 실행 가능 — 멀티시그 이전 시 함께 정리 필요.
 - 권장 운영 구조는 §8.3 (타임락).
 
 ### 7.6 기타
