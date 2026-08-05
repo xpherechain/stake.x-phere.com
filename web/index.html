@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>XP Union Vault — Stake XP. Burn the rest.</title>
+    <meta
+      name="description"
+      content="Stake XP, earn real validator yield, and burn the rest forever. Non-custodial — your principal is always yours."
+    />
+    <!-- social cards -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="XP Union Vault — Stake XP. Burn the rest." />
+    <meta
+      property="og:description"
+      content="60% of real validator rewards to stakers, 40%+ burned forever. Non-custodial staking on Xphere."
+    />
+    <meta property="og:url" content="https://stake.x-phere.com/" />
+    <meta property="og:image" content="https://stake.x-phere.com/assets/brand/og_card.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="XP Union Vault — Stake XP. Burn the rest." />
+    <meta
+      name="twitter:description"
+      content="60% of real validator rewards to stakers, 40%+ burned forever. Non-custodial staking on Xphere."
+    />
+    <meta name="twitter:image" content="https://stake.x-phere.com/assets/brand/og_card.png" />
+    <link rel="icon" href="assets/brand/favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+    />
+    <link rel="stylesheet" href="styles.css?v=17" />
+  </head>
+  <body>
+    <!-- grain + ember atmosphere -->
+    <div class="grain" aria-hidden="true"></div>
+    <div class="mesh" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="stars" aria-hidden="true"></div>
+    <div class="devgrid" aria-hidden="true"></div>
+    <div class="emberfield" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <div class="signature" aria-hidden="true"><img src="assets/brand/side_logo.png" alt="" /></div>
+
+    <!-- ─────────────  NAV  ───────────── -->
+    <header class="nav" id="top">
+      <a class="brand" href="#top">
+        <span class="brand-mark" aria-hidden="true"><img src="assets/brand/gnb_logo.png" alt="" /></span>
+        <span class="brand-name">XP&nbsp;UNION<span class="brand-sub">/ VAULT</span></span>
+      </a>
+      <nav class="nav-links">
+        <a href="#stake">Stake</a>
+        <a href="#how">How it works</a>
+        <a href="burn.html">Burn 🔥</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <div class="wallet-wrap">
+        <button class="btn btn-connect" id="connectBtn" data-state="idle">
+          <span class="dot"></span><span id="connectLabel">Connect</span>
+        </button>
+        <div class="wallet-menu" id="walletMenu" hidden>
+          <div class="wm-head">
+            <span id="wmAddr">—</span>
+            <b id="wmBal">—</b>
+          </div>
+          <button class="wm-item" id="wmCopy">Copy address</button>
+          <button class="wm-item" id="wmSwitch">Switch wallet</button>
+          <button class="wm-item danger" id="wmDisconnect">Disconnect</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="ticker" aria-hidden="true">
+      <div class="ticker-track" id="tickerTrack">
+        <div class="ticker-set">
+          <span class="tk"><i class="dot-live"></i> LIVE</span>
+          <span class="tk">TVL <b data-tk="tvl">—</b></span>
+          <span class="tk">APR <b class="up" data-tk="apr">—</b></span>
+          <span class="tk">BURNED <b data-tk="burned">—</b></span>
+          <span class="tk">CAP <b><span data-cap>2M</span> XP</b></span>
+          <span class="tk">COOLDOWN <b>7 DAYS</b></span>
+          <span class="tk">SPLIT <b>60% STAKE · 40%+ BURN</b></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="preview-banner" id="previewBanner" hidden>
+      <span class="pb-tag">PREVIEW</span>
+      <span class="pb-text" id="previewBannerText">Staking is not open yet — numbers are illustrative</span>
+      <span class="pb-eta" id="previewBannerEta"></span>
+    </div>
+
+    <div
+      class="launch-modal"
+      id="launchModal"
+      hidden
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="lmTitle"
+      onclick="if(event.target===this){this.hidden=true;this.style.display='none';}"
+    >
+      <div class="lm-card">
+        <div class="lm-kicker">Coming soon</div>
+        <h2 id="lmTitle">Staking is not open yet</h2>
+        <p id="lmNote"></p>
+        <div class="lm-eta" id="lmEta"></div>
+        <button
+          class="btn btn-primary"
+          id="lmClose"
+          onclick="var m=document.getElementById('launchModal');if(m){m.hidden=true;m.style.display='none';window.scrollTo({top:0,behavior:'smooth'})}"
+        >Explore the preview →</button>
+      </div>
+    </div>
+
+    <span class="demo-badge" id="demoBadge" hidden>demo data · contracts not yet live</span>
+
+    <!-- connect chooser: browser wallet vs ZIGAP QR -->
+    <div class="connect-chooser" id="connectChooser" hidden>
+      <div class="cc-card">
+        <div class="cc-title">Connect a wallet</div>
+        <button class="cc-opt" id="ccZigap">
+          <span class="cc-ico"><img src="assets/brand/zigap_symbol.svg" alt="ZIGAP" /></span>
+          <span class="cc-txt"><b>ZIGAP app</b><small>Scan a QR with your phone — Xphere native wallet</small></span>
+        </button>
+        <button class="cc-opt" id="ccInjected">
+          <span class="cc-ico">🦊</span>
+          <span class="cc-txt"><b>Browser wallet</b><small>MetaMask or any injected wallet</small></span>
+        </button>
+        <button class="cc-cancel" id="ccCancel">Cancel</button>
+      </div>
+    </div>
+
+    <!-- ─────────────  HERO  ───────────── -->
+    <section class="hero">
+      <div class="hero-art" aria-hidden="true">
+        <video src="assets/brand/main_pc.mp4" autoplay muted loop playsinline preload="metadata"></video>
+      </div>
+      <div class="hero-kicker reveal">Xphere · Union Validator Rewards</div>
+      <h1 class="hero-title">
+        <span class="reveal" style="--d: 1">Stake&nbsp;XP.</span>
+        <span class="reveal em" style="--d: 2">Burn&nbsp;the&nbsp;rest.</span>
+      </h1>
+      <p class="hero-lede reveal" style="--d: 3">
+        Real rewards from the foundation's validator node flow into the vault every day —
+        <strong>60% goes to stakers, 40%+ is burned forever</strong>. Your principal is never
+        touched: unstake any time and get 100% back after a 7-day cooldown.
+      </p>
+      <div class="hero-cta reveal" style="--d: 3">
+        <a class="btn btn-primary" href="#stake" id="heroCta">Connect &amp; stake →</a>
+      </div>
+
+      <div class="stat-row two">
+        <article class="stat reveal" style="--d: 4">
+          <div class="stat-label">Total Value Locked</div>
+          <div class="stat-value" data-metric="tvl">—</div>
+          <div class="stat-foot"><span data-metric="tvlPct">—</span> of <span data-cap>2M</span> cap</div>
+          <div class="cap-track"><div class="cap-fill" data-metric="capFill"></div></div>
+        </article>
+        <article class="stat reveal" style="--d: 5">
+          <div class="stat-label">Staking APR</div>
+          <div class="stat-value em" data-metric="apr">—</div>
+          <div class="stat-foot">from real validator revenue — not token emissions</div>
+        </article>
+      </div>
+
+      <!-- burn band — burned (settled) vs to-be-burned (accruing), explicitly split -->
+      <a class="burnband reveal" style="--d: 6" href="burn.html" aria-label="watch the burn live">
+        <div class="bb-main">
+          <div class="bb-label">Burned <span class="flame">▲</span> <em>on-chain</em></div>
+          <div class="bb-counter" data-metric="burned">—</div>
+          <div class="bb-foot">settled &amp; removed from supply</div>
+        </div>
+        <div class="bb-plus" aria-hidden="true">+</div>
+        <div class="bb-main">
+          <div class="bb-label">To be burned <em class="hot">accruing live</em></div>
+          <div class="bb-counter accr" data-metric="burnAccr">—</div>
+          <div class="bb-rate" data-metric="burnRate"></div>
+        </div>
+        <div class="bb-side">
+          <div class="bb-next" data-metric="burnNext"></div>
+          <div class="bb-foot">burns at the next daily settlement</div>
+          <span class="bb-cta">Watch it burn →</span>
+        </div>
+      </a>
+
+      <!-- rollout roadmap: guarded launch → proving → full open -->
+      <div class="roadmap reveal" style="--d: 7" aria-label="rollout phases">
+        <div class="rm-step done">
+          <i></i>
+          <div><b>Guarded launch</b><span>cap 2M XP · live now</span></div>
+        </div>
+        <div class="rm-line"></div>
+        <div class="rm-step active">
+          <i></i>
+          <div><b>Proving phase</b><span>cap raised in steps as the vault proves itself</span></div>
+        </div>
+        <div class="rm-line"></div>
+        <div class="rm-step">
+          <i></i>
+          <div><b>Full open</b><span>cap 35M XP · every change via 48h timelock</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────  01 · STAKE  ───────────── -->
+    <section class="stake" id="stake">
+      <div class="section-head">
+        <span class="idx">01</span>
+        <h2>Stake &amp; manage</h2>
+      </div>
+
+      <div class="stake-grid">
+        <!-- position card -->
+        <aside class="position-card">
+          <div class="pc-row"><span>Your stake</span><b data-me="principal">—</b></div>
+          <div class="pc-row"><span>Claimable rewards</span><b class="em" data-me="rewards">—</b></div>
+          <div class="pc-row"><span>In wallet</span><b data-me="walletBal">—</b></div>
+          <div class="pc-row" id="wxpRow" hidden><span>WXP in wallet</span><b data-me="wxpBal">—</b></div>
+          <div class="pc-hint" id="pcHint">Connect a wallet to see your position.</div>
+        </aside>
+
+        <!-- action tabs -->
+        <div class="actions">
+          <div class="tabs" role="tablist">
+            <button class="tab active" data-tab="deposit" role="tab">Stake</button>
+            <button class="tab" data-tab="redeem" role="tab">Unstake</button>
+            <button class="tab" data-tab="claim" role="tab">Claim</button>
+          </div>
+
+          <!-- stake -->
+          <div class="panel active" data-panel="deposit">
+            <label class="field">
+              <span>Amount (XP)</span>
+              <div class="field-row">
+                <input type="number" id="depAmount" placeholder="0.0" min="0" step="any" />
+                <button class="max" id="maxBtn" type="button">MAX</button>
+              </div>
+              <span class="bal-line">In wallet: <b id="stakeBal" title="click to stake max">—</b></span>
+            </label>
+            <p class="est-note" id="estNote" hidden>
+              ≈ earns <b id="estYear">—</b> / year at current APR
+            </p>
+            <p class="ref-note" id="refNote" hidden>
+              via partner <b id="refPartner"></b>
+              <em>— attribution is set automatically by the referring site</em>
+            </p>
+            <button class="btn btn-primary" id="depositBtn">Stake XP</button>
+            <p class="micro">
+              Native XP, no wrapping needed. Rewards start accruing the moment you stake.
+            </p>
+          </div>
+
+          <!-- unstake -->
+          <div class="panel" data-panel="redeem">
+            <label class="field">
+              <span>Amount to unstake (XP)</span>
+              <input type="number" id="redAmount" placeholder="0.0" min="0" step="any" />
+              <span class="bal-line">Staked: <b id="redBal" title="click to unstake all">—</b></span>
+            </label>
+            <p class="micro">
+              Two steps: request now → your XP matures for <b>7 days</b> → claim 100% of principal.
+              Rewards already earned stay claimable.
+            </p>
+            <div class="btn-pair">
+              <button class="btn btn-primary" id="requestBtn">Request unstake</button>
+              <button class="btn btn-ghost" id="claimRedeemBtn">Claim matured</button>
+            </div>
+            <div class="requests" id="requestList"></div>
+          </div>
+
+          <!-- claim -->
+          <div class="panel" data-panel="claim">
+            <div class="claim-figure">
+              <div class="cf-label">Ready to claim</div>
+              <div class="cf-value em" data-me="rewards2">—</div>
+            </div>
+            <button class="btn btn-primary" id="claimBtn">Claim rewards</button>
+            <p class="micro">Rewards accrue every second and never expire — claim whenever you like.</p>
+          </div>
+
+          <div class="tx-status" id="txStatus" hidden></div>
+          <div class="share-row" id="shareRow" hidden>
+            <span>You're in — tell the world?</span>
+            <a class="btn btn-ghost" id="shareX" href="#" target="_blank" rel="noopener">Share on 𝕏</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────  02 · HOW IT WORKS  ───────────── -->
+    <section class="mechanism" id="how">
+      <div class="section-head">
+        <span class="idx">02</span>
+        <h2>How it works</h2>
+      </div>
+
+      <div class="steps">
+        <div class="step-card reveal">
+          <div class="sc-n">1</div>
+          <h3>The node earns</h3>
+          <p>
+            The foundation runs a Union validator node. Its block rewards — real revenue, not newly
+            minted tokens — flow into the vault every day.
+          </p>
+        </div>
+        <div class="step-card reveal" style="--d: 1">
+          <div class="sc-n">2</div>
+          <h3>60% earn · 40%+ burn</h3>
+          <p>
+            Each day the inflow is split: up to <b class="ok-t">60% streams to stakers</b>, and the
+            rest — at least <b class="burn-t">40% — is burned forever</b>. The emptier the vault,
+            the more is burned.
+          </p>
+        </div>
+        <div class="step-card reveal" style="--d: 2">
+          <div class="sc-n">3</div>
+          <h3>Your XP stays yours</h3>
+          <p>
+            The vault never moves or re-invests your principal. Unstake any time — after a 7-day
+            cooldown you get <b>100% back</b>, even if rewards were to stop entirely.
+          </p>
+        </div>
+      </div>
+
+      <div class="split-visual reveal">
+        <div class="sv-cap">every day's validator rewards</div>
+        <div class="sv-meter">
+          <div class="sv-earn" style="width: 60%"><b>60%</b><span>→ stakers</span></div>
+          <div class="sv-burn" style="width: 40%"><b>40%+</b><span>→ burned 🔥</span></div>
+        </div>
+      </div>
+
+      <p class="mechanism-foot">
+        Settlement is permissionless and verifiable on-chain. Principal and rewards are accounted
+        separately, so staker principal can always be withdrawn in full.
+      </p>
+    </section>
+
+    <!-- ─────────────  03 · FAQ  ───────────── -->
+    <section class="faq" id="faq">
+      <div class="section-head">
+        <span class="idx">03</span>
+        <h2>FAQ</h2>
+      </div>
+
+      <details>
+        <summary>Where does the yield come from?</summary>
+        <p>
+          From the foundation's Union validator node — actual block rewards earned on-chain. Nothing
+          is minted to pay stakers, so your yield never dilutes the supply. The opposite: at least
+          40% of every day's rewards is burned.
+        </p>
+      </details>
+      <details>
+        <summary>Is my principal safe?</summary>
+        <p>
+          The vault is non-custodial: your staked XP is held in the vault contract under your own
+          shares (standard ERC-4626) and is never lent, moved, or re-staked. Principal and the
+          reward pool are separate ledgers — even if rewards stopped, 100% of principal remains
+          withdrawable. The contract logic is immutable: nobody, including the foundation, can
+          change it after deployment.
+        </p>
+      </details>
+      <details>
+        <summary>How do I unstake?</summary>
+        <p>
+          Two steps: <b>Request unstake</b> starts a 7-day cooldown, then <b>Claim matured</b>
+          returns your full principal. Rewards you've already earned stay claimable at any time,
+          before or after unstaking.
+        </p>
+      </details>
+      <details>
+        <summary>Why does the burn grow when the vault isn't full?</summary>
+        <p>
+          Think of the cap as reserved seats, each with its own share of the daily rewards. You earn
+          exactly your seats' share — no more, no less, regardless of how many others stake. The
+          share belonging to empty seats has no owner, so it's burned. Less staked → more burned.
+          Your APR stays the same either way.
+        </p>
+      </details>
+      <details>
+        <summary>What is the current cap?</summary>
+        <p>
+          The vault opened in a guarded launch with a <b><span data-cap>2M</span> XP</b> cap — a
+          deliberately conservative start. The cap is raised in steps via the on-chain timelock
+          (48-hour public delay) as the rollout progresses, so every change is visible on-chain
+          two days before it takes effect.
+        </p>
+      </details>
+      <details>
+        <summary>Can I verify the contracts?</summary>
+        <p>
+          Yes — everything is public and readable by anyone. Contract addresses are listed in the
+          footer below, and the <a href="status.html">live status page</a> shows every vault
+          metric — including the solvency check — straight from the chain.
+        </p>
+      </details>
+    </section>
+
+    <footer class="footer">
+      <div class="foot-left">
+        <span class="brand-mark" aria-hidden="true"><img src="assets/brand/gnb_logo.png" alt="" /></span>
+        XP Union Vault — non-custodial · ERC-4626 · 7-day cooldown
+      </div>
+      <div class="foot-addrs" id="footAddrs"></div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+    <script>
+      // Local testnet preview: index.html?config=testnet loads config.testnet.js.
+      // The public site (no query param) always loads the default config.js.
+      (function () {
+        var pick = new URLSearchParams(location.search).get("config");
+        var src = pick === "testnet" ? "config.testnet.js" : "config.js?v=6";
+        document.write('<script src="' + src + '"><\/script>');
+      })();
+    </script>
+    <script src="zigap.js?v=4"></script>
+    <script src="app.js?v=27"></script>
+  </body>
+</html>

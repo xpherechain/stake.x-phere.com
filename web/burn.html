@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>XP Burn — watch the supply shrink</title>
+    <meta
+      name="description"
+      content="Every day, 40%+ of the Union validator's rewards are burned forever. Watch it happen, live."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="XP Burn — watch the supply shrink" />
+    <meta property="og:description" content="40%+ of every day's validator rewards, burned forever. Live on-chain." />
+    <meta property="og:url" content="https://stake.x-phere.com/burn.html" />
+    <meta property="og:image" content="https://stake.x-phere.com/assets/brand/og_card.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="assets/brand/favicon.ico" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+    />
+    <style>
+      :root {
+        --ink: #000;
+        --ink-2: #0d0d0d;
+        --ink-3: #151515;
+        --line: #262626;
+        --ash: #8a8a8a;
+        --ash-2: #5f5f5f;
+        --bone: #ededed;
+        --cream: #ffeed4;
+        --ember: #e7453a;
+        --ember-2: #ff9738;
+        --ember-deep: #cf1512;
+        --ok: #6fce9f;
+        --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        --sans: "Pretendard Variable", Pretendard, -apple-system, system-ui, sans-serif;
+        --brand-gradient: linear-gradient(90deg, #ffeed4 0%, #ff9738 22%, #e7453a 58%, #cf1512 85%, #ff9738);
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        background: var(--ink); color: var(--bone); font-family: var(--sans);
+        -webkit-font-smoothing: antialiased; overflow-x: hidden;
+      }
+      a { color: var(--ember-2); text-decoration: none; }
+
+      .glow {
+        position: fixed; inset: 0; z-index: 0; pointer-events: none;
+        background:
+          radial-gradient(60% 50% at 50% 110%, rgba(207, 21, 18, 0.34), transparent 65%),
+          radial-gradient(45% 35% at 50% -10%, rgba(255, 151, 56, 0.10), transparent 60%);
+      }
+      #embers { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+      .wrap { position: relative; z-index: 2; }
+
+      .nav {
+        display: flex; align-items: center; gap: 14px; padding: 16px 24px;
+        border-bottom: 1px solid var(--line);
+      }
+      .nav .brand { font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 0.05em; color: var(--bone); }
+      .nav .brand .grad {
+        background: var(--brand-gradient); -webkit-background-clip: text;
+        background-clip: text; -webkit-text-fill-color: transparent;
+      }
+      .nav .spacer { flex: 1; }
+      .nav a.back { font-size: 13px; color: var(--ash); }
+
+      /* ── the counter ── */
+      .stage { max-width: 980px; margin: 0 auto; padding: 72px 24px 40px; text-align: center; }
+      .kicker {
+        font-family: var(--mono); font-size: 12px; letter-spacing: 0.3em;
+        text-transform: uppercase; color: var(--ember-2);
+      }
+      .counter {
+        margin-top: 18px;
+        font-family: var(--mono); font-weight: 700;
+        font-size: clamp(3.2rem, 11vw, 8rem); line-height: 1; letter-spacing: -0.03em;
+        background: var(--brand-gradient); background-size: 220% 100%;
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent; color: transparent;
+        animation: burnshift 3.2s linear infinite;
+        filter: drop-shadow(0 0 28px rgba(231, 69, 58, 0.45));
+        font-variant-numeric: tabular-nums;
+      }
+      @keyframes burnshift { to { background-position: -220% 0; } }
+      .counter-sub { font-family: var(--mono); font-size: 13px; color: var(--ash); margin-top: 12px; }
+      .counter-sub b { color: var(--cream); }
+      .rate-line {
+        margin-top: 10px; font-family: var(--mono); font-size: 14px; color: var(--ember-2);
+        animation: ratepulse 2s ease-in-out infinite;
+      }
+      .rate-line b { color: var(--cream); }
+      @keyframes ratepulse { 50% { opacity: 0.7; } }
+
+      /* to-be-burned accrual box */
+      .accr-box {
+        margin: 34px auto 0; max-width: 560px;
+        border: 1px solid rgba(255, 151, 56, 0.45); border-radius: 16px;
+        background: rgba(255, 151, 56, 0.06); padding: 18px 26px 20px;
+      }
+      .accr-label {
+        font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em;
+        color: var(--ember-2);
+      }
+      .accr-counter {
+        margin-top: 8px; font-family: var(--mono); font-weight: 700;
+        font-size: clamp(1.8rem, 5vw, 3rem); line-height: 1; letter-spacing: -0.02em;
+        color: var(--ember-2); font-variant-numeric: tabular-nums;
+        animation: ratepulse 2s ease-in-out infinite;
+        filter: drop-shadow(0 0 16px rgba(255, 151, 56, 0.35));
+      }
+
+      .nextburn {
+        margin: 34px auto 0; display: inline-flex; align-items: baseline; gap: 12px; flex-wrap: wrap; justify-content: center;
+        border: 1px solid rgba(231, 69, 58, 0.4); border-radius: 999px;
+        padding: 12px 26px; background: rgba(231, 69, 58, 0.07);
+        font-family: var(--mono); font-size: 14px; color: var(--ash);
+      }
+      .nextburn b { color: var(--cream); font-size: 18px; }
+      .nextburn .q { color: var(--ember-2); }
+
+      /* ── daily chart ── */
+      section { max-width: 980px; margin: 0 auto; padding: 44px 24px 0; }
+      section h2 {
+        font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em;
+        text-transform: uppercase; color: var(--ember); margin-bottom: 16px;
+      }
+      section h2 .sub { color: var(--ash-2); text-transform: none; letter-spacing: 0; }
+      .chart {
+        display: flex; align-items: flex-end; gap: 6px; height: 180px;
+        border: 1px solid var(--line); border-radius: 14px;
+        background: var(--ink-2); padding: 18px 18px 34px; position: relative;
+        overflow-x: auto;
+      }
+      .chart .col { flex: 1; min-width: 26px; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; position: relative; }
+      .chart .col .bar {
+        width: 100%; border-radius: 6px 6px 2px 2px; min-height: 3px;
+        background: linear-gradient(180deg, var(--ember-2), var(--ember-deep));
+        box-shadow: 0 0 12px rgba(231, 69, 58, 0.35);
+      }
+      .chart .col .lbl {
+        position: absolute; bottom: -24px; left: 50%; transform: translateX(-50%);
+        font-family: var(--mono); font-size: 9px; color: var(--ash-2); white-space: nowrap;
+      }
+      .chart .col .val {
+        position: absolute; top: -4px; left: 50%; transform: translate(-50%, -100%);
+        font-family: var(--mono); font-size: 10px; color: var(--ember-2); white-space: nowrap;
+        opacity: 0; transition: opacity 0.15s;
+      }
+      .chart .col:hover .val { opacity: 1; }
+      .chart-empty { font-family: var(--mono); font-size: 12px; color: var(--ash-2); align-self: center; margin: 0 auto; }
+
+      /* ── burn log ── */
+      .log { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+      .log .row {
+        display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+        padding: 13px 18px; background: var(--ink-2); border-bottom: 1px solid var(--line);
+        font-family: var(--mono); font-size: 13px;
+      }
+      .log .row:last-child { border-bottom: none; }
+      .log .d { color: var(--ash); }
+      .log .amt { color: var(--ember-2); font-weight: 600; }
+      .log .spacer { flex: 1; }
+      .log .note { color: var(--ash-2); font-size: 11px; }
+
+      /* ── CTA ── */
+      .cta { text-align: center; padding: 64px 24px 80px; }
+      .cta p { color: var(--ash); margin-bottom: 18px; font-size: 1.05rem; }
+      .cta p b { color: var(--bone); }
+      .cta a.btn {
+        display: inline-block; font-weight: 700; color: #fff;
+        background: linear-gradient(90deg, var(--ember-2), var(--ember-deep));
+        border-radius: 999px; padding: 15px 42px; font-size: 1.05rem;
+        box-shadow: 0 8px 30px rgba(207, 21, 18, 0.35);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .counter { animation: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="glow"></div>
+    <canvas id="embers"></canvas>
+
+    <div class="wrap">
+      <nav class="nav">
+        <a class="brand" href="index.html"><span class="grad">XP UNION</span> / BURN</a>
+        <span class="spacer"></span>
+        <a class="back" href="status.html">status</a>
+        <a class="back" href="index.html">← stake</a>
+      </nav>
+
+      <div class="stage">
+        <div class="kicker">Burned forever · live from the chain</div>
+        <div class="counter" id="counter">—</div>
+        <div class="counter-sub">
+          XP <b>burned &amp; settled on-chain</b> — gone from supply forever ·
+          <a href="" id="burnAddrLink" target="_blank" rel="noopener">verify the burn address</a>
+        </div>
+
+        <div class="accr-box">
+          <div class="accr-label">TO BE BURNED · accruing right now</div>
+          <div class="accr-counter" id="accr">—</div>
+          <div class="rate-line" id="rateLine"></div>
+        </div>
+
+        <div class="nextburn">
+          <span>burns in</span><b id="cd">—:—:—</b>
+          <span class="q">at the daily settlement</span>
+        </div>
+      </div>
+
+      <section>
+        <h2>Daily burns <span class="sub">— one settlement per day, straight from the ledger</span></h2>
+        <div class="chart" id="chart"><span class="chart-empty">loading…</span></div>
+      </section>
+
+      <section>
+        <h2>Burn log</h2>
+        <div class="log" id="log"></div>
+      </section>
+
+      <div class="cta">
+        <p>The other <b>60%</b> goes to stakers — <b>~16% real yield</b>, principal always yours.</p>
+        <a class="btn" href="index.html#stake">Stake XP →</a>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+    <script>
+      (function () {
+        var pick = new URLSearchParams(location.search).get("config");
+        var src = pick === "testnet" ? "config.testnet.js" : "config.js?v=6";
+        document.write('<script src="' + src + '"><\/script>');
+      })();
+    </script>
+    <script src="burn.js?v=6"></script>
+  </body>
+</html>

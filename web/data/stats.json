@@ -1,0 +1,23 @@
+{
+  "updated": "2026-08-05T00:00:00Z",
+  "days": [
+    {
+      "date": "2026-08-03",
+      "settledAt": 1785741994,
+      "settled": 1450.0,
+      "burned": 1450.0,
+      "distributed": 0.0,
+      "tvl": 300.0,
+      "aprPct": 0.0
+    },
+    {
+      "date": "2026-08-04",
+      "settledAt": 1785830408,
+      "settled": 1450.0,
+      "burned": 1447.9116,
+      "distributed": 2.0884,
+      "tvl": 4801.0,
+      "aprPct": 15.88
+    }
+  ]
+}

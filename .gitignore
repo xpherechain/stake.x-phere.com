@@ -1,0 +1,28 @@
+# Foundry
+/out/
+/cache/
+/broadcast/
+.env
+
+# screenshots / build
+/web/.playwright-mcp/
+/*.png
+!web/assets/*.png
+# tool state
+.playwright-mcp/
+docs/.pdca-status.json
+docs/.bkit-memory.json
+/tmp/
+anvil.log
+docs/.pdca-snapshots/
+
+# ops secrets
+ops/.env
+.DS_Store
+verify-artifacts/
+
+# hardening (final)
+ops/.env.*
+!ops/.env.example
+*.log
+private-docs/

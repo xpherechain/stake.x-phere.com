@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>XP Union Vault — Partners</title>
+    <meta
+      name="description"
+      content="Partner-attributed TVL, live from the chain. Route your users into the XP Union Vault with a single link."
+    />
+    <link rel="icon" href="assets/brand/favicon.ico" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+    />
+    <style>
+      :root {
+        --ink: #000;
+        --ink-2: #0d0d0d;
+        --ink-3: #151515;
+        --line: #262626;
+        --line-2: #333;
+        --ash: #8a8a8a;
+        --ash-2: #5f5f5f;
+        --bone: #ededed;
+        --cream: #ffeed4;
+        --ember: #e7453a;
+        --ember-2: #ff9738;
+        --ok: #6fce9f;
+        --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        --sans: "Pretendard Variable", Pretendard, -apple-system, system-ui, sans-serif;
+        --brand-gradient: linear-gradient(90deg, #ffeed4 0%, #ff9738 9%, #e7453a 47%, #cf1512 100%);
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        background: var(--ink); color: var(--bone); font-family: var(--sans);
+        line-height: 1.6; -webkit-font-smoothing: antialiased; padding-bottom: 80px;
+      }
+      a { color: var(--ember-2); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      code { font-family: var(--mono); color: var(--cream); }
+      .mono { font-family: var(--mono); }
+
+      .nav {
+        display: flex; align-items: center; gap: 14px; padding: 16px 24px;
+        border-bottom: 1px solid var(--line);
+      }
+      .nav .brand { font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 0.05em; color: var(--bone); }
+      .nav .brand .grad {
+        background: var(--brand-gradient); -webkit-background-clip: text;
+        background-clip: text; -webkit-text-fill-color: transparent;
+      }
+      .nav .spacer { flex: 1; }
+      .nav a.back { font-size: 13px; color: var(--ash); }
+
+      .wrap { max-width: 880px; margin: 0 auto; padding: 48px 24px 0; }
+      .kicker {
+        font-family: var(--mono); font-size: 12px; letter-spacing: 0.28em;
+        text-transform: uppercase; color: var(--ember-2);
+      }
+      h1 { margin-top: 14px; font-size: clamp(1.8rem, 5vw, 2.8rem); font-weight: 800; letter-spacing: -0.02em; }
+      .lede { margin-top: 14px; max-width: 62ch; color: #c9c4bf; }
+      .lede b { color: var(--bone); }
+
+      section { margin-top: 44px; }
+      section > h2 {
+        font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em;
+        text-transform: uppercase; color: var(--ember); margin-bottom: 14px;
+      }
+      section > h2 .sub { color: var(--ash-2); text-transform: none; letter-spacing: 0; }
+
+      /* leaderboard */
+      .board { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--ink-2); }
+      .b-head, .b-row {
+        display: grid; grid-template-columns: 1.2fr 1fr 0.6fr 1.6fr;
+        gap: 12px; align-items: center; padding: 13px 18px;
+      }
+      .b-head {
+        font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em;
+        text-transform: uppercase; color: var(--ash); border-bottom: 1px solid var(--line);
+      }
+      .b-row { border-bottom: 1px solid var(--line); font-size: 14px; }
+      .b-row:last-child { border-bottom: none; }
+      .b-row .name { font-weight: 700; }
+      .b-row .name small { display: block; font-family: var(--mono); font-size: 10px; color: var(--ash-2); font-weight: 400; }
+      .b-row .tvl, .b-row .share { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+      .b-row .bar { height: 8px; border-radius: 999px; background: var(--ink-3); border: 1px solid var(--line); overflow: hidden; }
+      .b-row .bar i { display: block; height: 100%; background: var(--brand-gradient); transition: width 0.6s; }
+      .b-foot { padding: 11px 18px; font-family: var(--mono); font-size: 11px; color: var(--ash-2); }
+
+      /* steps */
+      .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      .step { border: 1px solid var(--line); border-radius: 12px; background: var(--ink-2); padding: 18px; position: relative; overflow: hidden; }
+      .step::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--brand-gradient); }
+      .step .n { font-family: var(--mono); font-size: 10px; color: var(--ash-2); letter-spacing: 0.1em; }
+      .step h3 { font-size: 1rem; margin: 6px 0; }
+      .step p { font-size: 0.85rem; color: var(--ash); }
+      .step p code { font-size: 0.8rem; }
+
+      /* verify box */
+      .verify { border: 1px solid var(--line); border-radius: 12px; background: var(--ink-2); padding: 16px 18px; }
+      .verify pre { overflow-x: auto; font-family: var(--mono); font-size: 12.5px; color: #c9c4bf; line-height: 1.7; }
+      .verify pre b { color: var(--cream); }
+      .verify .note { margin-top: 10px; font-size: 12px; color: var(--ash-2); }
+
+      /* contact */
+      .contact {
+        margin-top: 44px; border: 1px solid rgba(255, 151, 56, 0.35); border-radius: 14px;
+        background: linear-gradient(180deg, rgba(255, 151, 56, 0.06), var(--ink-2));
+        padding: 26px; text-align: center;
+      }
+      .contact p { color: #c9c4bf; max-width: 56ch; margin: 0 auto 16px; }
+      .contact a.btn {
+        display: inline-block; font-weight: 700; color: #fff;
+        background: linear-gradient(90deg, var(--ember-2), #cf1512);
+        border-radius: 999px; padding: 12px 32px;
+      }
+
+      @media (max-width: 720px) {
+        .steps { grid-template-columns: 1fr; }
+        .b-head, .b-row { grid-template-columns: 1fr 1fr 0.6fr; }
+        .b-head span:last-child, .b-row .bar { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <a class="brand" href="index.html"><span class="grad">XP UNION</span> / PARTNERS</a>
+      <span class="spacer"></span>
+      <a class="back" href="status.html">status</a>
+      <a class="back" href="index.html">← stake</a>
+    </nav>
+
+    <div class="wrap">
+      <div class="kicker">Route your users · verifiable on-chain</div>
+      <h1>One link. On-chain attribution.</h1>
+      <p class="lede">
+        Platforms, companies and KOLs route their users into the vault with a single referral
+        link. Every deposit is attributed on-chain to your <code>partnerId</code> —
+        <b>no SDK, no API keys, nothing to host</b>. Attribution is public and independently
+        verifiable by anyone, including you.
+      </p>
+
+      <!-- live leaderboard -->
+      <section>
+        <h2>Partner-attributed TVL <span class="sub">— live from the vault contract</span></h2>
+        <div class="board">
+          <div class="b-head"><span>Partner</span><span>Routed TVL</span><span>Share</span><span></span></div>
+          <div id="rows"><div class="b-row"><span class="mono" style="color:var(--ash-2)">loading…</span></div></div>
+          <div class="b-foot" id="boardFoot">—</div>
+        </div>
+      </section>
+
+      <!-- how it works -->
+      <section>
+        <h2>How partnering works</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="n">STEP 1</div>
+            <h3>Get your slug</h3>
+            <p>The Foundation registers your <code>partnerId</code> on-chain (one transaction). Terms are arranged individually.</p>
+          </div>
+          <div class="step">
+            <div class="n">STEP 2</div>
+            <h3>Share one link</h3>
+            <p>Send users to <code>stake.x-phere.com/?ref=yourslug</code>. Attribution is captured automatically — their yield is identical to staking directly.</p>
+          </div>
+          <div class="step">
+            <div class="n">STEP 3</div>
+            <h3>Verify &amp; settle</h3>
+            <p>Your routed TVL accrues to <code>partnerTVL(id)</code> on-chain. Revenue share is settled by the Foundation against that public record.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- verify -->
+      <section>
+        <h2>Verify it yourself <span class="sub">— trust the chain, not our dashboard</span></h2>
+        <div class="verify">
+          <pre>
+<b># your attributed TVL (bytes32 id = keccak256 of your slug)</b>
+PID=$(cast keccak "yourslug")
+cast call <span id="vaultAddr">0x…</span> \
+  "partnerTVL(bytes32)(uint256)" $PID --rpc-url <span id="rpcUrl">…</span></pre>
+          <div class="note">
+            Every <code>Deposited</code> event also carries the indexed <code>partnerId</code>,
+            so you can reconstruct your full TVL history independently.
+          </div>
+        </div>
+      </section>
+
+      <div class="contact">
+        <p>
+          Want to offer XP staking to your users — as a platform, a company, or a KOL?
+          Partnership terms and onboarding are arranged individually with the Foundation.
+        </p>
+        <a class="btn" href="mailto:partners@x-phere.com">Contact the Foundation →</a>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+    <script>
+      (function () {
+        var pick = new URLSearchParams(location.search).get("config");
+        var src = pick === "testnet" ? "config.testnet.js" : "config.js?v=6";
+        document.write('<script src="' + src + '"><\/script>');
+      })();
+    </script>
+    <script src="partners.js?v=1"></script>
+  </body>
+</html>

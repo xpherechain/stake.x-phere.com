@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>XP Union Vault — Live Status &amp; Transparency</title>
+    <link rel="icon" href="assets/brand/favicon.ico" />
+    <style>
+      :root {
+        --ink: #000;
+        --ink-2: #0d0d0d;
+        --ink-3: #151515;
+        --line: #262626;
+        --line-2: #333;
+        --ash: #8a8a8a;
+        --ash-2: #5f5f5f;
+        --bone: #ededed;
+        --cream: #ffeed4;
+        --ember: #e7453a;
+        --ember-2: #ff9738;
+        --ok: #6fce9f;
+        --warn: #ffc857;
+        --bad: #ff5b52;
+        --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+        --sans: -apple-system, "Pretendard Variable", Pretendard, system-ui, sans-serif;
+        --brand-gradient: linear-gradient(90deg, #ffeed4 0%, #ff9738 9%, #e7453a 47%, #cf1512 100%);
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        background: var(--ink);
+        color: var(--bone);
+        font-family: var(--sans);
+        font-size: 14px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+        padding-bottom: 70px;
+      }
+      a { color: var(--ember-2); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      code { font-family: var(--mono); color: var(--cream); }
+      .mono { font-family: var(--mono); }
+
+      .bar {
+        position: sticky; top: 0; z-index: 10;
+        display: flex; align-items: center; gap: 14px;
+        padding: 14px 22px;
+        background: rgba(0, 0, 0, 0.88); backdrop-filter: blur(8px);
+        border-bottom: 1px solid var(--line);
+      }
+      .bar h1 { font-size: 13px; letter-spacing: 0.05em; font-weight: 700; font-family: var(--mono); }
+      .bar h1 .grad {
+        background: var(--brand-gradient); -webkit-background-clip: text;
+        background-clip: text; -webkit-text-fill-color: transparent;
+      }
+      .bar .spacer { flex: 1; }
+      .bar .back { font-size: 12px; color: var(--ash); }
+
+      .wrap { max-width: 880px; margin: 0 auto; padding: 26px 22px 0; }
+
+      /* ── overall verdict banner ── */
+      .verdict {
+        display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        border-radius: 16px; padding: 22px 24px;
+        border: 1px solid rgba(111, 206, 159, 0.35);
+        background: linear-gradient(180deg, rgba(111, 206, 159, 0.10), rgba(111, 206, 159, 0.02));
+      }
+      .verdict.bad {
+        border-color: rgba(255, 91, 82, 0.45);
+        background: linear-gradient(180deg, rgba(255, 91, 82, 0.12), rgba(255, 91, 82, 0.02));
+      }
+      .verdict .light {
+        width: 14px; height: 14px; border-radius: 50%;
+        background: var(--ok); box-shadow: 0 0 14px var(--ok);
+        animation: pulse 2.4s ease-in-out infinite;
+      }
+      .verdict.bad .light { background: var(--bad); box-shadow: 0 0 14px var(--bad); }
+      @keyframes pulse { 50% { opacity: 0.55; } }
+      .verdict h2 { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; }
+      .verdict .sub { width: 100%; font-family: var(--mono); font-size: 11px; color: var(--ash); }
+
+      /* ── component status rows ── */
+      .components { margin-top: 14px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+      .comp {
+        display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        padding: 14px 18px; background: var(--ink-2);
+        border-bottom: 1px solid var(--line);
+      }
+      .comp:last-child { border-bottom: none; }
+      .comp .name { font-weight: 600; font-size: 13.5px; }
+      .comp .desc { font-family: var(--mono); font-size: 11px; color: var(--ash-2); }
+      .comp .spacer { flex: 1; }
+      .pill {
+        font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em;
+        padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line-2);
+        white-space: nowrap;
+      }
+      .pill.ok { color: var(--ok); border-color: rgba(111, 206, 159, 0.4); background: rgba(111, 206, 159, 0.07); }
+      .pill.warn { color: var(--warn); border-color: rgba(255, 200, 87, 0.4); background: rgba(255, 200, 87, 0.06); }
+      .pill.bad { color: var(--bad); border-color: rgba(255, 91, 82, 0.4); background: rgba(255, 91, 82, 0.07); }
+      .pill.idle { color: var(--ash); }
+
+      /* ── sections ── */
+      section { margin-top: 34px; }
+      section > h3 {
+        font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+        text-transform: uppercase; color: var(--ember); margin-bottom: 12px;
+      }
+      section > h3 .sub { color: var(--ash-2); letter-spacing: 0; text-transform: none; font-weight: 400; }
+
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+      .card { background: var(--ink-2); border: 1px solid var(--line); border-radius: 12px; padding: 15px 16px; }
+      .card .k { font-family: var(--mono); font-size: 10px; color: var(--ash); letter-spacing: 0.06em; text-transform: uppercase; }
+      .card .v { font-family: var(--mono); font-size: 21px; font-weight: 700; margin-top: 6px; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+      .card .v small { font-size: 11px; color: var(--ash); font-weight: 400; }
+      .card .n { font-size: 10.5px; color: var(--ash-2); margin-top: 4px; }
+      .v.ok { color: var(--ok); } .v.burn { color: var(--ember); } .v.warn { color: var(--warn); }
+
+      /* ── solvency proof ── */
+      .proof { border: 1px solid rgba(111, 206, 159, 0.3); border-radius: 14px; background: var(--ink-2); padding: 20px; }
+      .proof.bad { border-color: rgba(255, 91, 82, 0.45); }
+      .proof .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-family: var(--mono); font-size: 12.5px; margin-bottom: 7px; font-variant-numeric: tabular-nums; }
+      .proof .row .lbl { color: var(--ash); font-family: var(--sans); }
+      .proof .track { height: 26px; border-radius: 8px; background: var(--ink-3); border: 1px solid var(--line); position: relative; overflow: hidden; margin: 12px 0 8px; }
+      .proof .holdings { position: absolute; inset: 0; width: 0; background: rgba(111, 206, 159, 0.16); border-right: 2px solid var(--ok); transition: width .6s; }
+      .proof .oblig { position: absolute; top: 0; bottom: 0; left: 0; width: 0; background: rgba(255, 151, 56, 0.28); border-right: 2px solid var(--ember-2); transition: width .6s; }
+      .proof .verdict-line { font-family: var(--mono); font-size: 13px; margin-top: 10px; }
+      .proof .verdict-line b.ok { color: var(--ok); } .proof .verdict-line b.bad { color: var(--bad); }
+      .proof .exp { font-size: 11.5px; color: var(--ash-2); margin-top: 8px; max-width: 66ch; }
+
+      /* tables */
+      .tblwrap { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--ink-2); }
+      .tblwrap table { width: 100%; border-collapse: collapse; }
+      .tblwrap td { padding: 11px 16px; font-size: 12.5px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+      .tblwrap tr:last-child td { border-bottom: none; }
+      .tblwrap td:first-child { color: var(--ash); }
+      .tblwrap td:last-child { text-align: right; font-family: var(--mono); }
+
+      .foot { max-width: 880px; margin: 40px auto 0; padding: 16px 22px 0; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 10.5px; color: var(--ash-2); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+      .err-banner { display: none; margin: 18px auto 0; max-width: 880px; padding: 12px 16px; border: 1px solid var(--bad); border-radius: 10px; color: var(--bad); font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <div class="bar">
+      <h1><span class="grad">XP UNION VAULT</span> · LIVE STATUS</h1>
+      <span class="spacer"></span>
+      <a class="back" href="index.html">← stake.x-phere.com</a>
+    </div>
+
+    <div class="err-banner" id="errBanner"></div>
+
+    <div class="wrap">
+      <!-- overall verdict -->
+      <div class="verdict" id="verdict">
+        <span class="light"></span>
+        <h2 id="verdictText">Checking on-chain state…</h2>
+        <span class="sub" id="verdictSub">read directly from the Xphere blockchain — nothing here is self-reported</span>
+      </div>
+
+      <!-- component statuses -->
+      <div class="components" id="components"></div>
+
+      <!-- key metrics -->
+      <section>
+        <h3>Vault metrics <span class="sub">— live from the contracts</span></h3>
+        <div class="grid" id="metrics"></div>
+      </section>
+
+      <!-- solvency proof -->
+      <section>
+        <h3>Proof of solvency <span class="sub">— can every staker withdraw in full, right now?</span></h3>
+        <div class="proof" id="proof">
+          <div class="row"><span class="lbl">Vault holds (WXP)</span><span id="pHold">—</span></div>
+          <div class="row"><span class="lbl">Owed to stakers — principal + unstaking + unclaimed rewards</span><span id="pOwe">—</span></div>
+          <div class="track"><div class="holdings" id="pBarHold"></div><div class="oblig" id="pBarOwe"></div></div>
+          <div class="verdict-line" id="pVerdict">—</div>
+          <p class="exp">
+            The vault must always hold at least as much WXP as it owes: every staker's principal,
+            everything mid-unstake, and all unclaimed rewards. Anyone can recompute this from public
+            contract state at any time.
+          </p>
+        </div>
+      </section>
+
+      <!-- last settlement -->
+      <section>
+        <h3>Last settlement <span class="sub">— most recent daily burn / distribution</span></h3>
+        <div class="grid" id="lastSettle"></div>
+      </section>
+
+      <!-- parameters -->
+      <section>
+        <h3>Protocol parameters <span class="sub">— changes require a 48-hour on-chain timelock</span></h3>
+        <div class="tblwrap"><table><tbody id="params"></tbody></table></div>
+      </section>
+
+      <!-- governance -->
+      <section>
+        <h3>Governance verification <span class="sub">— who controls what, verified on-chain</span></h3>
+        <div class="tblwrap"><table><tbody id="gov"></tbody></table></div>
+      </section>
+    </div>
+
+    <div class="foot">
+      <span id="footLeft">—</span>
+      <span>auto-refresh 20s · read-only</span>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+    <script>
+      // Default: mainnet (config.js). status.html?config=testnet loads the testnet set.
+      (function () {
+        var pick = new URLSearchParams(location.search).get("config");
+        var src = pick === "testnet" ? "config.testnet.js" : "config.js?v=6";
+        document.write('<script src="' + src + '"><\/script>');
+      })();
+    </script>
+    <script src="status.js?v=2"></script>
+  </body>
+</html>

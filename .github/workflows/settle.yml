@@ -1,0 +1,44 @@
+# ============================================================
+# Backup settle caller — redundancy for the VPS keeper.
+# settle() is permissionless: duplicate calls are harmless (only one
+# succeeds per epoch), so this simply retries a few times a day at
+# :30 offsets from the keeper's :00 cron slots.
+#
+# Required repository secret (Settings → Secrets → Actions):
+#   SETTLE_PK — gas-only key for calling settle() (no privileges)
+# ============================================================
+name: backup-settle
+
+on:
+  schedule:
+    # 4x daily at :30 (keeper cron runs at even hours :00) — max ~6h gap
+    - cron: "30 1,7,13,19 * * *"
+  workflow_dispatch: {}
+
+env:
+  RPC: https://rpc.ankr.com/xphere_mainnet
+  DIST: "0x24C5912B63a8B41DA80EBDC2115949fcbb41Fddf"
+
+jobs:
+  settle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - name: settle if eligible
+        env:
+          SETTLE_PK: ${{ secrets.SETTLE_PK }}
+        run: |
+          if [ -z "$SETTLE_PK" ]; then
+            echo "::error::SETTLE_PK secret is not set"; exit 1
+          fi
+          READ=$(cast call "$DIST" "canSettle()(bool,string)" --rpc-url "$RPC")
+          OK=$(echo "$READ" | head -1 | awk '{print $1}')
+          if [ "$OK" = "true" ]; then
+            echo "eligible — settling (keeper must have missed its slot)"
+            cast send "$DIST" "settle()" --rpc-url "$RPC" --private-key "$SETTLE_PK"
+            echo "settled ✓ (lifetime burned: $(cast call $DIST 'totalBurned()(uint256)' --rpc-url $RPC))"
+          else
+            echo "skip — $(echo "$READ" | tail -1) (keeper is doing its job)"
+          fi
