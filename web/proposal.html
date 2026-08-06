@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>XP Union Vault — Partnership Proposal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Offer XP staking to your users with one link. On-chain attribution, no SDK, no API keys." />
+<meta property="og:title" content="XP Union Vault — Partnership Proposal" />
+<meta property="og:description" content="One link, zero build. On-chain attribution for partners." />
+<meta property="og:image" content="https://stake.x-phere.com/assets/brand/og_card.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" href="assets/brand/favicon.ico" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+  :root {
+    --ink:#000; --ink-2:#101010; --ink-3:#181818;
+    --line:#2a2726; --line-2:#3a3634;
+    --ash:#8f8a86; --ash-2:#6b6663; --bone:#efece8; --cream:#ffeed4;
+    --ember:#e7453a; --ember-2:#ff9738; --ok:#6fce9f;
+    --grad:linear-gradient(90deg,#ffeed4 0%,#ff9738 12%,#e7453a 52%,#cf1512 100%);
+    --sans:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo",sans-serif;
+    --mono:"IBM Plex Mono","SF Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--ink)}
+  body{color:var(--bone);font-family:var(--sans);line-height:1.55;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  
+  .page{max-width:860px;margin:0 auto;padding:34px 22px 8px;background:var(--ink);position:relative}
+  
+  .glow{position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(52% 28% at 84% 0%,rgba(207,21,18,.20),transparent 62%)}
+  .page>*{position:relative}
+
+  .eyebrow{font-family:var(--mono);font-size:12.3px;letter-spacing:.26em;
+    text-transform:uppercase;color:var(--ember-2)}
+  h1{font-size:39.1px;font-weight:800;letter-spacing:-.03em;margin-top:12px;line-height:1.06}
+  h1 .burn{background:var(--grad);-webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent}
+  .lede{margin-top:11px;color:#c9c4bf;font-size:13.6px;max-width:70ch}
+  .lede b{color:var(--bone)}
+
+  h2{display:flex;align-items:center;gap:10px;margin:14px 0 7px;
+    font-family:var(--mono);font-size:13.8px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ember)}
+  h2 .rule{flex:1;height:1px;background:linear-gradient(90deg,var(--line-2),transparent)}
+  h3{font-size:15.9px;font-weight:700;margin-bottom:4px}
+
+  table{width:100%;border-collapse:collapse;background:var(--ink-2);
+    border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{padding:5.5px 11px;font-size:12.0px;text-align:left;
+    border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-family:var(--mono);font-size:10.9px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--ash);font-weight:400}
+  tr:last-child td{border-bottom:none}
+  td.k{color:var(--ash);width:34%}
+  code{font-family:var(--mono);font-size:12.2px;color:var(--cream)}
+
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:14px}
+  .kpi{border:1px solid var(--line);border-radius:10px;background:var(--ink-2);padding:12px 13px}
+  .kpi .k{font-family:var(--mono);font-size:10.2px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--ash)}
+  .kpi .v{font-family:var(--mono);font-size:23.2px;font-weight:700;margin-top:5px;
+    letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .kpi .v small{font-size:13.0px;color:var(--ash);font-weight:400}
+  .kpi .n{font-size:10.9px;color:var(--ash-2);margin-top:3px}
+  .v.burn{color:var(--ember)} .v.ok{color:var(--ok)} .v.hot{color:var(--ember-2)}
+
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .card{border:1px solid var(--line);border-radius:10px;background:var(--ink-2);
+    padding:13px 15px;position:relative;overflow:hidden}
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--grad)}
+  .card p{font-size:12.0px;color:var(--ash);margin-top:3px}
+  .card p b{color:var(--bone)}
+
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .step{border:1px solid var(--line);border-radius:10px;background:var(--ink-2);padding:13px 14px}
+  .step .n{font-family:var(--mono);font-size:10.2px;color:var(--ember-2);letter-spacing:.1em}
+  .step h3{margin:5px 0 4px;font-size:14.5px}
+  .step p{font-size:11.6px;color:var(--ash)}
+
+  .callout{border:1px solid rgba(255,151,56,.42);border-radius:10px;
+    background:rgba(255,151,56,.06);padding:9px 13px;font-size:12.3px;color:#d8d3ce}
+  .callout b{color:var(--cream)}
+
+  .split{display:flex;gap:3px;height:34px;margin-top:8px}
+  .split>div{display:flex;align-items:center;padding:0 12px;border-radius:7px;
+    font-family:var(--mono);font-size:13.0px}
+  .se{background:rgba(111,206,159,.16);border:1px solid rgba(111,206,159,.42);color:#a6e8c6}
+  .sb{background:rgba(231,69,58,.17);border:1px solid rgba(231,69,58,.45);color:#ff9d8f}
+
+  ul{margin-left:15px}
+  li{font-size:12.2px;color:#c9c4bf;margin-bottom:3px}
+  li b{color:var(--bone)}
+
+  .pagefoot{display:none}
+  .gradline{height:2px;width:60px;background:var(--grad);border-radius:2px;margin-bottom:10px}
+  .cta{margin-top:12px;border:1px solid rgba(255,151,56,.4);border-radius:12px;
+    background:linear-gradient(180deg,rgba(255,151,56,.07),var(--ink-2));padding:18px 20px}
+  .cta h3{font-size:17.4px}
+  .cta p{font-size:13.0px;color:#c9c4bf;margin-top:5px}
+  .cta .mail{font-family:var(--mono);font-size:15.9px;color:var(--ember-2);margin-top:9px;display:block}
+
+  .nav{display:flex;align-items:center;gap:14px;padding:16px 22px;border-bottom:1px solid var(--line);
+    max-width:860px;margin:0 auto}
+  .nav .brand{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.05em;color:var(--bone);text-decoration:none}
+  .nav .brand .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .nav .sp{flex:1}
+  .nav a.pdf{font-family:var(--mono);font-size:12px;color:var(--ember-2);text-decoration:none;
+    border:1px solid rgba(255,151,56,.45);border-radius:999px;padding:6px 14px}
+  a{color:var(--ember-2)}
+  @media (max-width:720px){
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .cards,.steps{grid-template-columns:1fr}
+    .split{flex-direction:column;height:auto}
+    .split>div{width:100% !important;padding:10px 12px}
+    table,tbody,tr,td,th{display:block;width:100%}
+    thead{display:none}
+    tr{border-bottom:1px solid var(--line);padding:6px 0}
+    tr:last-child{border-bottom:none}
+    td{border-bottom:none;padding:4px 12px}
+    td.k{width:auto;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+    code{word-break:break-all}
+    h1{font-size:30px}
+  }
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a class="brand" href="index.html"><span class="g">XP UNION</span> / PARTNERS</a>
+  <span class="sp"></span>
+  <a class="pdf" href="https://raw.githubusercontent.com/xpherechain/stake.x-phere.com/main/docs/partner-proposal.pdf" target="_blank" rel="noopener">PDF ↓</a>
+</nav>
+
+<!-- ═════════ PAGE 1 ═════════ -->
+<div class="page">
+  <div class="glow"></div>
+  <div class="eyebrow">Xphere · Partnership Proposal</div>
+  <h1>Offer XP staking.<br /><span class="burn">One link, zero build.</span></h1>
+  <p class="lede">
+    XP Union Vault is a non-custodial staking product on Xphere, funded by the foundation's Union
+    validator revenue. Partners route their users in with a <b>single referral URL</b> — no SDK, no
+    API keys, nothing to host or maintain — and every deposit they originate is attributed
+    <b>on-chain</b>, where anyone can verify it.
+  </p>
+
+  <h2>Live on mainnet <span class="rule"></span></h2>
+  <div class="kpis">
+    <div class="kpi"><div class="k">Staking APR</div><div class="v ok">~15.9<small>%</small></div>
+      <div class="n">real validator yield</div></div>
+    <div class="kpi"><div class="k">Burned to date</div><div class="v burn">4,345<small> XP</small></div>
+      <div class="n">permanently removed</div></div>
+    <div class="kpi"><div class="k">User fee</div><div class="v">0<small>%</small></div>
+      <div class="n">no cut from yield</div></div>
+    <div class="kpi"><div class="k">Cooldown</div><div class="v">7<small> days</small></div>
+      <div class="n">100% principal back</div></div>
+  </div>
+  <p class="lede" style="font-size:12.2px;margin-top:7px;color:var(--ash-2)">
+    Figures are live on-chain values at the time of writing and move with actual node revenue —
+    they are not guarantees. Contracts, tests and the dashboard are public:
+    <code>github.com/xpherechain/stake.x-phere.com</code>
+  </p>
+
+  <h2>What the product does <span class="rule"></span></h2>
+  <p class="lede" style="margin-top:0">
+    Each day the foundation's validator revenue flows into the vault and is split:
+  </p>
+  <div class="split">
+    <div class="se" style="width:60%"><b>60% → stakers</b>&nbsp;&nbsp;streamed per second</div>
+    <div class="sb" style="width:40%"><b>40%+ → burned</b>&nbsp;&nbsp;forever</div>
+  </div>
+  <p class="lede" style="font-size:12.5px;margin-top:8px">
+    The staker pool is priced against the full stake cap, so <b>each staker earns their own share
+    regardless of how full the vault is</b> — APR stays roughly constant as TVL grows, and the yield
+    belonging to unfilled capacity is burned instead. Rewards come from real node revenue, never
+    from new token emissions.
+  </p>
+
+  <h2>Why partners take this <span class="rule"></span></h2>
+  <div class="cards">
+    <div class="card"><h3>Nothing to build</h3>
+      <p>Integration is a URL: <code>?ref=yourslug</code>. No contract calls, no key custody, no
+      backend. You can be live in a day.</p></div>
+    <div class="card"><h3>Trustless accounting</h3>
+      <p>Your originated TVL lives in <code>partnerTVL()</code> and indexed events. <b>You verify
+      our numbers, not the other way round.</b></p></div>
+    <div class="card"><h3>Your users lose nothing</h3>
+      <p>Referred users earn <b>exactly</b> what direct stakers earn. The revenue share is paid by
+      the foundation, never skimmed from users.</p></div>
+    <div class="card"><h3>A product users understand</h3>
+      <p>Real yield plus a visible daily burn — a deflationary story that is easy to explain and
+      easy to verify.</p></div>
+  </div>
+
+  <div class="pagefoot"><span>XP Union Vault — Partnership Proposal</span><span>1 / 2</span></div>
+</div>
+
+<!-- ═════════ PAGE 2 ═════════ -->
+<div class="page">
+  <div class="glow"></div>
+  <div class="gradline"></div>
+
+  <h2 style="margin-top:0">Who this fits <span class="rule"></span></h2>
+  <table>
+    <tr><th>Partner type</th><th>How it is used</th><th>What you bring</th></tr>
+    <tr><td><b>Wallets &amp; platforms</b></td>
+      <td>Add an "Earn" entry that routes to your referral URL; users stay in your UX</td>
+      <td>Existing user base, distribution surface</td></tr>
+    <tr><td><b>Exchanges &amp; custodians</b></td>
+      <td>Offer XP staking without running validator infrastructure</td>
+      <td>Volume, credibility, listing reach</td></tr>
+    <tr><td><b>Analytics &amp; data platforms</b></td>
+      <td>Surface vault metrics natively — everything is readable on-chain</td>
+      <td>Audience of informed users</td></tr>
+    <tr><td><b>KOLs &amp; communities</b></td>
+      <td>Share your link; attribution is automatic and permanent per user</td>
+      <td>Reach, trust, education</td></tr>
+  </table>
+
+  <h2>How it works, end to end <span class="rule"></span></h2>
+  <div class="steps">
+    <div class="step"><div class="n">STEP 1</div><h3>Agree terms</h3>
+      <p>We register your <code>partnerId</code> on-chain (one transaction). Revenue-share terms are
+      agreed individually.</p></div>
+    <div class="step"><div class="n">STEP 2</div><h3>Share the link</h3>
+      <p>Point users to <code>stake.x-phere.com/?ref=you</code>. Attribution is captured on their
+      first deposit and is permanent.</p></div>
+    <div class="step"><div class="n">STEP 3</div><h3>Verify &amp; settle</h3>
+      <p>Watch your TVL accrue on-chain. The foundation settles your revenue share against that
+      public record.</p></div>
+  </div>
+
+  <h2>Commercial terms <span class="rule"></span></h2>
+  <div class="callout">
+    Revenue share is calculated from the <b>TVL you originate</b>, using the on-chain
+    <code>partnerTVL</code> record as the single source of truth, and is <b>paid by the foundation
+    separately</b> — it is never deducted from your users' rewards. Rates, settlement cadence and
+    payout wallet are agreed <b>per partner</b>; we are happy to discuss a structure that fits how
+    you work. Optional per-partner capacity limits can also be set on-chain.
+  </div>
+
+  <h2>What we can and cannot promise <span class="rule"></span></h2>
+  <ul>
+    <li><b>Verifiable:</b> attribution, TVL, burns, solvency and governance are all public on-chain
+      and independently checkable — including by you.</li>
+    <li><b>Non-custodial:</b> user principal is never deployed, re-delegated or lent. It is
+      returned in full after the 7-day cooldown, even if rewards stop.</li>
+    <li><b>Immutable logic:</b> no proxies, no upgradeability. Operational parameters move only
+      through a 48-hour on-chain timelock.</li>
+    <li><b>Variable, not guaranteed:</b> APR follows actual node revenue. We do not promise a rate,
+      and we would rather set expectations conservatively than oversell.</li>
+    <li><b>Early stage:</b> the vault launched in a guarded phase with a reduced cap, raised in
+      steps as it proves itself. Early partners grow with it.</li>
+  </ul>
+
+  <h2>Verify before you commit <span class="rule"></span></h2>
+  <table>
+    <tr><td class="k">Product</td><td><code>stake.x-phere.com</code></td></tr>
+    <tr><td class="k">Live attribution board</td><td><code>stake.x-phere.com/partners.html</code></td></tr>
+    <tr><td class="k">Proof of solvency</td><td><code>stake.x-phere.com/status.html</code></td></tr>
+    <tr><td class="k">Burn tracker</td><td><code>stake.x-phere.com/burn.html</code></td></tr>
+    <tr><td class="k">Source, tests, CI</td><td><code>github.com/xpherechain/stake.x-phere.com</code></td></tr>
+    <tr><td class="k">Vault contract</td><td><code>0xaE4435bB474716E130be2aC8e6C244f171451064</code></td></tr>
+  </table>
+
+  <div class="cta">
+    <h3>Let's talk</h3>
+    <p>Tell us who your users are and how you'd want to present staking — we'll come back with a
+    structure and get you live quickly. A technical data sheet for your engineers is available on
+    request.</p>
+    <span class="mail">partners@x-phere.com</span>
+  </div>
+
+  <div class="pagefoot"><span>XP Union Vault — Partnership Proposal</span><span>2 / 2</span></div>
+</div>
+
+</body>
+</html>
