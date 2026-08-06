@@ -79,6 +79,27 @@ if [ -n "${COLLECTOR_PK:-}" ]; then
   fi
 fi
 
+# 1b) 잔여분 콜드월렛 대피 (COLD_ADDR 설정 시)
+#     부분 스윕에서 예산을 초과해 남는 보상은 수령지갑(핫월렛)에 계속 쌓인다.
+#     수령주소는 노드 설정상 변경할 수 없으므로 잔고를 낮게 유지하는 것이
+#     유일한 방어책 — 예산 충전 후 남는 전액을 콜드월렛으로 옮긴다.
+#     실패해도 정산은 계속 진행한다(자금은 수령지갑에 그대로 남음).
+if [ -n "${COLLECTOR_PK:-}" ] && [ -n "${COLD_ADDR:-}" ]; then
+  BAL2=$(cast balance "$COLLECTOR" --rpc-url "$RPC")
+  EVAC=$(python3 -c "print(max(0, $BAL2 - ${GAS_RESERVE_WEI:-0}))")
+  MIN_EVAC="${MIN_EVACUATE_WEI:-1000000000000000000000}" # 기본 1,000 XP 이상일 때만
+  if python3 -c "exit(0 if int('$EVAC') >= int('$MIN_EVAC') else 1)"; then
+    log "evacuate $(cast to-unit $EVAC ether) XP  $COLLECTOR -> $COLD_ADDR"
+    if cast send "$COLD_ADDR" --value "$EVAC" --rpc-url "$RPC" --private-key "$COLLECTOR_PK" >/dev/null; then
+      log "evacuated"
+      notify "🔐 [XP Vault] 콜드월렛 대피 $(cast to-unit $EVAC ether) XP${nl}수령지갑 잔여: $(cast to-unit $(cast balance "$COLLECTOR" --rpc-url "$RPC") ether) XP"
+    else
+      log "evacuate FAILED"
+      notify "🚨 [XP Vault] 콜드월렛 대피 실패 — 수령지갑에 $(cast to-unit $EVAC ether) XP 잔류. 가스/RPC 확인 필요."
+    fi
+  fi
+fi
+
 # 2) settle (에폭 경과 + minSettle 충족 시)
 #    SETTLE_HOUR_UTC 설정 시 "그 시각 이후 그날의 첫 기회"에만 정산한다
 #    (예: 0 → 매일 00:00 UTC = 09:00 KST 이후 첫 슬롯). 특정 슬롯에만

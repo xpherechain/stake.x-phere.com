@@ -83,6 +83,13 @@ if [ -n "${COLLECTOR_PK:-}" ]; then
     if python3 -c "exit(0 if $pend < ${SWEEP_LIMIT_WEI} and $cb > ${GAS_RESERVE_WEI:-0} else 1)"; then
       alerts+="⚠ 다음 정산분 미충전 — 대기 $(cast to-unit $pend ether) XP < 예산 $(cast to-unit ${SWEEP_LIMIT_WEI} ether) XP (수령지갑엔 $(cast to-unit $cb ether) XP 보유) — 스윕 확인${nl}"
     fi
+    # 대피가 켜져 있으면 핫월렛 잔고는 낮게 유지되어야 한다 — 누적은 대피 실패 신호.
+    if [ -n "${COLD_ADDR:-}" ]; then
+      EVAC_ALERT="${COLLECTOR_ALERT_WEI:-20000000000000000000000}" # 기본 20,000 XP
+      if python3 -c "exit(0 if $cb > $EVAC_ALERT else 1)"; then
+        alerts+="⚠ 수령지갑(핫월렛) 잔고 $(cast to-unit $cb ether) XP — 콜드월렛 대피 실패 의심${nl}"
+      fi
+    fi
   fi
 fi
 
