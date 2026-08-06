@@ -6,6 +6,9 @@
 # ============================================================
 set -euo pipefail
 cd "$(dirname "$0")"
+# foundry(cast)를 어떤 실행 환경에서도 찾도록 PATH 보강
+# (cron, sudo -u 는 로그인 셸을 거치지 않아 ~/.foundry/bin 이 빠진다)
+export PATH="$PATH:$HOME/.foundry/bin:/home/xpops/.foundry/bin:/usr/local/bin"
 set -a; source ./.env; set +a
 : "${RPC:?}"; : "${DIST:?}"; : "${VAULT:?}"; : "${WXP:?}"
 c() { cast call "$1" "$2" ${3:-} --rpc-url "$RPC" | awk '{print $1}'; }

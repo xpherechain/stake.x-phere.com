@@ -11,6 +11,9 @@
 # ============================================================
 set -euo pipefail
 cd "$(dirname "$0")"
+# foundry(cast)를 어떤 실행 환경에서도 찾도록 PATH 보강
+# (cron, sudo -u 는 로그인 셸을 거치지 않아 ~/.foundry/bin 이 빠진다)
+export PATH="$PATH:$HOME/.foundry/bin:/home/xpops/.foundry/bin:/usr/local/bin"
 set -a; source ./.env; set +a
 : "${RPC:?}"; : "${VAULT:?}"; : "${PM_PK:?PARTNER_MANAGER 키를 PM_PK 로 넘기세요}"
 SLUG="${1:?슬러그를 지정하세요 (예: cryptokim)}"
