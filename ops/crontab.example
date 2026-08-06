@@ -3,8 +3,14 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/bin:/bin:/home/xpops/.foundry/bin
 
-# 2시간마다 — 스윕(핫월렛 노출 최소화) + 정산(에폭 경과 시에만 실제 실행, 아니면 skip)
-0 */2 * * *  /opt/xp-vault/ops/daily-settle.sh >> /var/log/xp-vault/settle.log 2>&1
+# 10분마다 — 스윕 + 정산.
+#   정산은 에폭(24h)이 열린 직후에만 성공하고 나머지 실행은 즉시 skip이므로
+#   부하는 무시할 수준(읽기 1~2회). 촘촘히 도는 이유는 APR 안정성 때문:
+#   currentAPR() 이 "마지막 정산 간격"으로 연율화하므로, 간격이 24h 에서
+#   벗어날수록 표시 APR 이 왜곡된다. 10분 주기면 간격 오차가 ≤10분(0.7%)로
+#   억제된다. (2시간 주기 + 시각 앵커 조합은 간격이 26h/48h 로 튀어 APR 이
+#   반토막 나므로 사용하지 않는다 — SETTLE_HOUR_UTC 는 비워 둘 것)
+*/10 * * * *  /opt/xp-vault/ops/daily-settle.sh >> /var/log/xp-vault/settle.log 2>&1
 
 # 30분마다 — 상태 점검 + 알림
-*/30 * * * *  /opt/xp-vault/ops/monitor.sh >> /var/log/xp-vault/monitor.log 2>&1
+*/30 * * * *  /opt/xp-vault/ops/monitor.sh      >> /var/log/xp-vault/monitor.log 2>&1
