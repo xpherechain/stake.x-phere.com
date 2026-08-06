@@ -1,23 +1,30 @@
 # ============================================================
-# Backup settle caller — redundancy for the VPS keeper.
-# settle() is permissionless: duplicate calls are harmless (only one
-# succeeds per epoch), so this simply retries a few times a day at
-# :30 offsets from the keeper's :00 cron slots.
+# Backup settle caller + off-server watchdog.
 #
-# Required repository secret (Settings → Secrets → Actions):
-#   SETTLE_PK — gas-only key for calling settle() (no privileges)
+# settle() is permissionless, so this can safely run alongside the VPS
+# keeper: only one call per epoch succeeds, the rest are no-ops. It runs
+# often enough to hold the settle interval near 24h on its own if the
+# keeper is down — currentAPR() annualizes from that interval, so a long
+# gap would visibly distort the published APR.
+#
+# It also alerts when a settlement is overdue, which the on-server
+# monitor cannot do if the server itself is down.
+#
+# Repository secrets (Settings → Secrets → Actions):
+#   SETTLE_PK      gas-only key for settle() — holds no roles
+#   SLACK_WEBHOOK  optional; alerting only
 # ============================================================
 name: backup-settle
 
 on:
   schedule:
-    # 4x daily at :30 (keeper cron runs at even hours :00) — max ~6h gap
-    - cron: "30 1,7,13,19 * * *"
+    - cron: "*/15 * * * *" # every 15 min (GitHub may delay under load)
   workflow_dispatch: {}
 
 env:
   RPC: https://rpc.ankr.com/xphere_mainnet
   DIST: "0x24C5912B63a8B41DA80EBDC2115949fcbb41Fddf"
+  OVERDUE_SECONDS: "21600" # alert if eligible for >6h without settling
 
 jobs:
   settle:
@@ -26,19 +33,55 @@ jobs:
     steps:
       - uses: foundry-rs/foundry-toolchain@v1
 
-      - name: settle if eligible
+      - name: settle if eligible, alert if overdue
         env:
           SETTLE_PK: ${{ secrets.SETTLE_PK }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         run: |
-          if [ -z "$SETTLE_PK" ]; then
-            echo "::error::SETTLE_PK secret is not set"; exit 1
-          fi
+          set -euo pipefail
+
+          notify() {
+            [ -n "${SLACK_WEBHOOK:-}" ] || return 0
+            python3 - "$1" <<'PY' || true
+          import json, os, sys, urllib.request
+          req = urllib.request.Request(
+              os.environ["SLACK_WEBHOOK"],
+              json.dumps({"text": sys.argv[1]}).encode(),
+              {"Content-Type": "application/json"},
+          )
+          urllib.request.urlopen(req, timeout=10)
+          PY
+          }
+
           READ=$(cast call "$DIST" "canSettle()(bool,string)" --rpc-url "$RPC")
           OK=$(echo "$READ" | head -1 | awk '{print $1}')
-          if [ "$OK" = "true" ]; then
-            echo "eligible — settling (keeper must have missed its slot)"
-            cast send "$DIST" "settle()" --rpc-url "$RPC" --private-key "$SETTLE_PK"
-            echo "settled ✓ (lifetime burned: $(cast call $DIST 'totalBurned()(uint256)' --rpc-url $RPC))"
-          else
-            echo "skip — $(echo "$READ" | tail -1) (keeper is doing its job)"
+          NEXT=$(cast call "$DIST" "nextSettleTime()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
+          NOW=$(date -u +%s)
+          OVERDUE=$((NOW - NEXT))
+
+          if [ "$OK" != "true" ]; then
+            echo "skip — $(echo "$READ" | tail -1)"
+            exit 0
           fi
+
+          if [ -z "${SETTLE_PK:-}" ]; then
+            echo "::error::SETTLE_PK secret is not set"
+            notify "🚨 [XP Vault] 백업 정산 불가 — GitHub Secret SETTLE_PK 미설정 (정산 ${OVERDUE}초 지연 중)"
+            exit 1
+          fi
+
+          # The keeper normally settles within minutes of eligibility; if we
+          # get here well past that, the keeper is likely down.
+          if [ "$OVERDUE" -gt "$OVERDUE_SECONDS" ]; then
+            notify "⚠️ [XP Vault] 정산이 $((OVERDUE / 3600))시간 지연 — VPS 키퍼 점검 필요. 백업(GitHub Actions)이 대신 정산합니다."
+          fi
+
+          B0=$(cast call "$DIST" "totalBurned()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
+          PEND=$(cast call "$DIST" "pendingSettlement()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
+          echo "settling $(cast to-unit "$PEND" ether) XP"
+          cast send "$DIST" "settle()" --rpc-url "$RPC" --private-key "$SETTLE_PK"
+          B1=$(cast call "$DIST" "totalBurned()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
+          BURNED=$(python3 -c "print(($B1-$B0)/1e18)")
+
+          echo "settled ✓ burned +$BURNED XP"
+          notify "🔥 [XP Vault] 백업 정산 실행 (GitHub Actions)${nl:-$'\n'}정산액: $(cast to-unit "$PEND" ether) XP · 소각 +$BURNED XP${nl:-$'\n'}※ VPS 키퍼가 놓친 건이니 서버 상태를 확인해 주세요."
