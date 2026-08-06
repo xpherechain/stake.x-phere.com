@@ -10,6 +10,21 @@ set -a; source ./.env; set +a
 : "${RPC:?}"; : "${DIST:?}"; : "${VAULT:?}"; : "${WXP:?}"
 c() { cast call "$1" "$2" ${3:-} --rpc-url "$RPC" | awk '{print $1}'; }
 
+# 설정 유효성: 플레이스홀더면 감시 자체가 무의미하므로 즉시 경보
+ZERO=0x0000000000000000000000000000000000000000
+if [ "$DIST" = "$ZERO" ] || [ "$VAULT" = "$ZERO" ] || [ "$WXP" = "$ZERO" ]; then
+  MSG="[XP Vault] ops/.env 설정 오류 - 컨트랙트 주소가 플레이스홀더(0x0)입니다. 키퍼/모니터링이 무력화된 상태."
+  echo "$MSG"
+  if [ -n "${SLACK_WEBHOOK:-}" ]; then
+    SLACK_WEBHOOK="$SLACK_WEBHOOK" python3 - "$MSG" <<'PY' || true
+import json, os, sys, urllib.request
+req = urllib.request.Request(os.environ["SLACK_WEBHOOK"], json.dumps({"text": sys.argv[1]}).encode(), {"Content-Type": "application/json"})
+urllib.request.urlopen(req, timeout=10)
+PY
+  fi
+  exit 1
+fi
+
 notify() { # $1 = multiline message
   if [ -n "${SLACK_WEBHOOK:-}" ]; then
     SLACK_WEBHOOK="$SLACK_WEBHOOK" python3 - "$1" <<'PY' || true

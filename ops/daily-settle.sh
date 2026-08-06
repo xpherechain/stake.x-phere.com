@@ -15,6 +15,15 @@ set -a; source ./.env; set +a
 log() { echo "[$(date -u +%FT%TZ)] $*"; }
 nl=$'\n'
 
+ZERO=0x0000000000000000000000000000000000000000
+# 설정 유효성 검증: 플레이스홀더/빈 값이면 조용히 죽지 말고 경보 후 중단.
+# (.env 가 .env.example 로 덮어써지면 모든 스크립트가 무력화되므로 필수)
+config_error=""
+[ "${DIST:-}" = "$ZERO" ] && config_error="DIST가 플레이스홀더(0x0)"
+[ "${VAULT:-$ZERO}" = "$ZERO" ] && config_error="${config_error:+$config_error, }VAULT가 플레이스홀더(0x0)"
+[ -z "${SETTLE_PK:-}" ] && [ -z "${COLLECTOR_PK:-}" ] && \
+  config_error="${config_error:+$config_error, }서명 키가 모두 비어 있음"
+
 notify() { # $1 = multiline message
   if [ -n "${SLACK_WEBHOOK:-}" ]; then
     SLACK_WEBHOOK="$SLACK_WEBHOOK" python3 - "$1" <<'PY' || true
@@ -32,6 +41,12 @@ PY
       --data-urlencode "chat_id=${TG_CHAT}" --data-urlencode "text=$1" >/dev/null || true
   fi
 }
+
+if [ -n "$config_error" ]; then
+  log "CONFIG ERROR: $config_error — 중단"
+  notify "🚨 [XP Vault] 설정 오류로 정산 중단${nl}${config_error}${nl}ops/.env 확인 필요 (.env.example 로 덮어써졌을 가능성)"
+  exit 1
+fi
 
 # 1) 스윕 (경로 B: COLLECTOR_PK 있을 때만)
 #    SWEEP_LIMIT_WEI = "에폭당 투입 예산" — 부분 스윕 모드.
@@ -62,12 +77,21 @@ if [ -n "${COLLECTOR_PK:-}" ]; then
 fi
 
 # 2) settle (에폭 경과 + minSettle 충족 시)
-#    SETTLE_HOUR_UTC 설정 시 해당 UTC 시각의 크론 슬롯에서만 정산한다
-#    (예: 0 → 매일 00:00 UTC = 09:00 KST 앵커). 비우면 매 슬롯 시도.
-if [ -n "${SETTLE_HOUR_UTC:-}" ] && [ "$(date -u +%-H)" != "${SETTLE_HOUR_UTC}" ]; then
-  log "settle deferred to ${SETTLE_HOUR_UTC}:00 UTC slot"
-  log "done"
-  exit 0
+#    SETTLE_HOUR_UTC 설정 시 "그 시각 이후 그날의 첫 기회"에만 정산한다
+#    (예: 0 → 매일 00:00 UTC = 09:00 KST 이후 첫 슬롯). 특정 슬롯에만
+#    한정하면 tx 체결이 몇 초 늦어질 때 그날을 통째로 건너뛰므로,
+#    시각 하한 + 하루 1회 조건으로 판정한다. 비우면 매 슬롯 시도.
+if [ -n "${SETTLE_HOUR_UTC:-}" ]; then
+  now_h=$(date -u +%-H)
+  today=$(date -u +%F)
+  last_ts=$(cast call "$DIST" "lastSettlement()(uint64,uint256,uint256,uint256)" --rpc-url "$RPC" \
+            | sed -n 1p | awk '{print $1}')
+  last_day=$(date -u -d "@$last_ts" +%F 2>/dev/null || date -u -r "$last_ts" +%F)
+  if [ "$now_h" -lt "$SETTLE_HOUR_UTC" ] || [ "$last_day" = "$today" ]; then
+    log "settle deferred (anchor ${SETTLE_HOUR_UTC}:00 UTC, last settled $last_day)"
+    log "done"
+    exit 0
+  fi
 fi
 #    드리프트 방지: 정산 tx가 크론 시작보다 몇 초 늦게 체결되므로, 다음날
 #    크론은 항상 몇 초 못 미쳐 스킵하고 정산이 매일 한 슬롯(2h)씩 밀린다.
