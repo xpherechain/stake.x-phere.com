@@ -66,13 +66,23 @@ if python3 -c "exit(0 if $held < $oblig else 1)"; then
   alerts+="🚨 불변식 위반: WXP held=$held < 의무=$oblig — 즉시 확인 필요${nl}"
 fi
 
-# ③ 수령지갑 잔고 누적(스윕 실패/부재 징후) — 임계 초과 시 알림
-#    부분 스윕 모드에선 어느 정도 누적이 정상이므로 임계는 넉넉히.
-COLLECTOR_ALERT_WEI="${COLLECTOR_ALERT_WEI:-100000000000000000000000}" # 100,000 XP
+# ③ 수령지갑 잔고 — 전액 스윕 모드에서만 누적을 이상신호로 본다.
+#    부분 스윕(SWEEP_LIMIT_WEI 설정) 중에는 예산 초과분이 수령지갑에 남는 것이
+#    설계된 동작이므로 누적 자체는 경보 대상이 아니다. 그 모드의 실패 신호는
+#    "Distributor 예산 미충전"이며 아래에서 따로 본다.
 if [ -n "${COLLECTOR_PK:-}" ]; then
   cb=$(cast balance "$(cast wallet address --private-key "$COLLECTOR_PK")" --rpc-url "$RPC")
-  if python3 -c "exit(0 if $cb > $COLLECTOR_ALERT_WEI else 1)"; then
-    alerts+="⚠ 수령지갑 잔고 $(cast to-unit $cb ether) XP 누적 — 스윕/대피 확인${nl}"
+  if [ -z "${SWEEP_LIMIT_WEI:-}" ]; then
+    COLLECTOR_ALERT_WEI="${COLLECTOR_ALERT_WEI:-100000000000000000000000}" # 100,000 XP
+    if python3 -c "exit(0 if $cb > $COLLECTOR_ALERT_WEI else 1)"; then
+      alerts+="⚠ 수령지갑 잔고 $(cast to-unit $cb ether) XP 누적 — 스윕 실패 의심${nl}"
+    fi
+  else
+    # 부분 스윕: 수령지갑에 재원이 있는데도 Distributor 대기잔고가 예산에
+    # 못 미치면(다음 정산분 미확보) 스윕 경로에 문제가 있다는 뜻.
+    if python3 -c "exit(0 if $pend < ${SWEEP_LIMIT_WEI} and $cb > ${GAS_RESERVE_WEI:-0} else 1)"; then
+      alerts+="⚠ 다음 정산분 미충전 — 대기 $(cast to-unit $pend ether) XP < 예산 $(cast to-unit ${SWEEP_LIMIT_WEI} ether) XP (수령지갑엔 $(cast to-unit $cb ether) XP 보유) — 스윕 확인${nl}"
+    fi
   fi
 fi
 
