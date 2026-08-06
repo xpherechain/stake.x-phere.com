@@ -67,7 +67,7 @@ if [ -n "${COLLECTOR_PK:-}" ]; then
   fi
   # NOTE: wei amounts exceed bash's 64-bit integers — compare via python
   if python3 -c "exit(0 if int('$SWEEP') > 0 else 1)"; then
-    log "sweep $(cast to-unit $SWEEP ether) XP  $COLLECTOR -> $DIST"
+    log "sweep $(cast to-unit $SWEEP ether) XP -> distributor (budget $(cast to-unit $PEND_NOW ether)/$(cast to-unit ${SWEEP_LIMIT_WEI:-0} ether) XP before)"
     if cast send "$DIST" --value "$SWEEP" --rpc-url "$RPC" --private-key "$COLLECTOR_PK" >/dev/null; then
       SWEPT=$(cast to-unit $SWEEP ether)
     else
@@ -88,8 +88,19 @@ if [ -n "${COLLECTOR_PK:-}" ] && [ -n "${COLD_ADDR:-}" ]; then
   BAL2=$(cast balance "$COLLECTOR" --rpc-url "$RPC")
   EVAC=$(python3 -c "print(max(0, $BAL2 - ${GAS_RESERVE_WEI:-0}))")
   MIN_EVAC="${MIN_EVACUATE_WEI:-1000000000000000000000}" # 기본 1,000 XP 이상일 때만
-  if python3 -c "exit(0 if int('$EVAC') >= int('$MIN_EVAC') else 1)"; then
-    log "evacuate $(cast to-unit $EVAC ether) XP  $COLLECTOR -> $COLD_ADDR"
+  # 방어: 정산 예산이 아직 안 찼으면 대피하지 않는다. 스윕이 이미 예산을
+  # 우선 충전하므로 정상 흐름에서는 발생하지 않지만, 어떤 이유로든 예산이
+  # 미달인 상태에서 자금이 콜드월렛으로 빠지는 일은 없어야 한다.
+  BUDGET_OK=1
+  if [ -n "${SWEEP_LIMIT_WEI:-}" ]; then
+    PEND_CHK=$(cast call "$DIST" "pendingSettlement()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
+    python3 -c "exit(0 if int('$PEND_CHK') >= int('${SWEEP_LIMIT_WEI}') else 1)" || BUDGET_OK=0
+  fi
+  if [ "$BUDGET_OK" = "0" ]; then
+    log "evacuate skip — settle budget not yet funded ($(cast to-unit $PEND_CHK ether)/$(cast to-unit ${SWEEP_LIMIT_WEI} ether) XP)"
+  elif python3 -c "exit(0 if int('$EVAC') >= int('$MIN_EVAC') else 1)"; then
+    PEND_AFTER=$(cast call "$DIST" "pendingSettlement()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
+    log "evacuate $(cast to-unit $EVAC ether) XP -> cold (settle budget already funded: $(cast to-unit $PEND_AFTER ether)/$(cast to-unit ${SWEEP_LIMIT_WEI:-0} ether) XP)"
     if cast send "$COLD_ADDR" --value "$EVAC" --rpc-url "$RPC" --private-key "$COLLECTOR_PK" >/dev/null; then
       log "evacuated"
       notify "🔐 [XP Vault] 콜드월렛 대피 $(cast to-unit $EVAC ether) XP${nl}수령지갑 잔여: $(cast to-unit $(cast balance "$COLLECTOR" --rpc-url "$RPC") ether) XP"
