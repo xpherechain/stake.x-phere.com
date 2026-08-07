@@ -3,22 +3,31 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>XP Union Vault — Stake XP. Burn the rest.</title>
+    <title>Stake XP on Xphere — Real Validator Yield | XP Union Vault</title>
     <meta
       name="description"
-      content="Stake XP, earn real validator yield, and burn the rest forever. Non-custodial — your principal is always yours."
+      content="Stake XP on Xphere and earn yield paid from actual validator block rewards — no minting, no dilution. 40%+ of every day's rewards is burned forever. Non-custodial, ERC-4626, 7-day unstake."
     />
+    <link rel="canonical" href="https://stake.x-phere.com/" />
+    <meta name="theme-color" content="#000000" />
+
     <!-- social cards -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="XP Union Vault — Stake XP. Burn the rest." />
+    <meta property="og:site_name" content="XP Union Vault" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:title" content="Stake XP on Xphere — Real Validator Yield" />
     <meta
       property="og:description"
       content="60% of real validator rewards to stakers, 40%+ burned forever. Non-custodial staking on Xphere."
     />
     <meta property="og:url" content="https://stake.x-phere.com/" />
     <meta property="og:image" content="https://stake.x-phere.com/assets/brand/og_card.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="XP Union Vault — stake XP, burn the rest" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="XP Union Vault — Stake XP. Burn the rest." />
+    <meta name="twitter:site" content="@Xphere_official" />
+    <meta name="twitter:title" content="Stake XP on Xphere — Real Validator Yield" />
     <meta
       name="twitter:description"
       content="60% of real validator rewards to stakers, 40%+ burned forever. Non-custodial staking on Xphere."
@@ -27,6 +36,8 @@
     <link rel="icon" href="assets/brand/favicon.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
     <link
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
@@ -35,7 +46,111 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     />
-    <link rel="stylesheet" href="styles.css?v=17" />
+    <link rel="stylesheet" href="styles.css?v=18" />
+
+    <!-- Structured data. Keep the FAQ answers in sync with the #faq section below:
+         Google penalises FAQPage markup that does not appear on the page. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://stake.x-phere.com/#org",
+            "name": "Xphere",
+            "url": "https://x-phere.com",
+            "logo": "https://stake.x-phere.com/assets/brand/gnb_logo.png",
+            "sameAs": [
+              "https://x.com/Xphere_official",
+              "https://t.me/Xphere_official",
+              "https://discord.gg/xphere",
+              "https://github.com/xpherechain"
+            ]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://stake.x-phere.com/#website",
+            "url": "https://stake.x-phere.com/",
+            "name": "XP Union Vault",
+            "description": "Non-custodial XP staking on Xphere, funded by real validator block rewards.",
+            "publisher": { "@id": "https://stake.x-phere.com/#org" },
+            "inLanguage": "en"
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://stake.x-phere.com/#app",
+            "name": "XP Union Vault",
+            "url": "https://stake.x-phere.com/",
+            "applicationCategory": "FinanceApplication",
+            "operatingSystem": "Web",
+            "browserRequirements": "Requires an EVM wallet (MetaMask, ZIGAP)",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+            "featureList": [
+              "Non-custodial staking of XP",
+              "Yield paid from real validator block rewards",
+              "40%+ of daily rewards burned permanently",
+              "7-day cooldown withdrawal",
+              "On-chain partner attribution"
+            ],
+            "isPartOf": { "@id": "https://stake.x-phere.com/#website" }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://stake.x-phere.com/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Where does the yield come from?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "From the foundation's Union validator node — actual block rewards earned on-chain. Nothing is minted to pay stakers, so your yield never dilutes the supply. The opposite: at least 40% of every day's rewards is burned."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is my principal safe?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "The vault is non-custodial: your staked XP is held in the vault contract under your own shares (standard ERC-4626) and is never lent, moved, or re-staked. Principal and the reward pool are separate ledgers — even if rewards stopped, 100% of principal remains withdrawable. The contract logic is immutable: nobody, including the foundation, can change it after deployment."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How do I unstake?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Two steps: Request unstake starts a 7-day cooldown, then Claim matured returns your full principal. Rewards you've already earned stay claimable at any time, before or after unstaking."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Why does the burn grow when the vault isn't full?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Think of the cap as reserved seats, each with its own share of the daily rewards. You earn exactly your seats' share — no more, no less, regardless of how many others stake. The share belonging to empty seats has no owner, so it's burned. Less staked → more burned. Your APR stays the same either way."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What is the current cap?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "The vault opened in a guarded launch with a 2M XP cap — a deliberately conservative start. The cap is raised in steps via the on-chain timelock (48-hour public delay) as the rollout progresses, so every change is visible on-chain two days before it takes effect."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I verify the contracts?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes — everything is public and readable by anyone. Contract addresses are listed in the footer below, and the live status page shows every vault metric — including the solvency check — straight from the chain."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <!-- grain + ember atmosphere -->
@@ -408,6 +523,14 @@
         <span class="brand-mark" aria-hidden="true"><img src="assets/brand/gnb_logo.png" alt="" /></span>
         XP Union Vault — non-custodial · ERC-4626 · 7-day cooldown
       </div>
+      <nav class="foot-nav" aria-label="Site and project links">
+        <a href="burn.html">Burn tracker</a>
+        <a href="https://github.com/xpherechain/stake.x-phere.com" rel="noopener">Source code</a>
+        <a href="https://docs.x-phere.com" rel="noopener">Docs</a>
+        <a href="https://xpscan.io" rel="noopener">Explorer</a>
+        <a href="https://x.com/Xphere_official" rel="noopener me">X</a>
+        <a href="https://t.me/Xphere_official" rel="noopener me">Telegram</a>
+      </nav>
       <div class="foot-addrs" id="footAddrs"></div>
     </footer>
 

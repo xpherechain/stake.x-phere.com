@@ -894,6 +894,24 @@ pre code {
   color: var(--ash-2);
 }
 .footer .brand-mark { margin-right: 0.4rem; }
+/* Own row below the existing left/right blocks, so .footer keeps its
+   two-child space-between layout instead of distributing three items. */
+.foot-nav {
+  order: 3;
+  flex-basis: 100%;
+  display: flex;
+  gap: 1.1rem;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-top: 1.4rem;
+}
+.foot-nav a {
+  color: var(--ash-2);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.18s, border-color 0.18s;
+}
+.foot-nav a:hover { color: var(--ember-2); border-color: var(--ember); }
 
 /* brand signature (vertical script, right edge) ------------- */
 .signature {

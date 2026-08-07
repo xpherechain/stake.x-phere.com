@@ -1,0 +1,16 @@
+# XP Union Vault — https://stake.x-phere.com
+User-agent: *
+Allow: /
+
+# Note: partners.html and proposal.html are deliberately NOT disallowed here.
+# They carry <meta name="robots" content="noindex">, and a crawler that is
+# blocked from fetching a page can never read that tag — a robots.txt-blocked
+# URL can still be listed in search results when someone links to it.
+# Crawlable + noindex is what actually keeps them out.
+
+# Build artifacts and raw data have no standalone search value.
+Disallow: /abi/
+Disallow: /data/
+Disallow: /*config=
+
+Sitemap: https://stake.x-phere.com/sitemap.xml
