@@ -33,6 +33,52 @@ jobs:
     steps:
       - uses: foundry-rs/foundry-toolchain@v1
 
+      # Settling and publishing are separate failures. The keeper can keep
+      # settling on-chain while its `git push` quietly fails, which leaves the
+      # burn chart frozen with nothing to alert on — that ran for three days
+      # unnoticed. This check is off-server, so it survives the server dying.
+      - name: alert if published stats lag the chain
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        run: |
+          set -uo pipefail
+
+          ONCHAIN=$(cast call "$DIST" "lastSettledAt()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
+          PUBLISHED=$(curl -sf --max-time 20 https://stake.x-phere.com/data/stats.json \
+            | python3 -c "import sys,json;print(json.load(sys.stdin)['days'][-1]['settledAt'])" 2>/dev/null || echo "")
+
+          if [ -z "$PUBLISHED" ]; then
+            echo "stats.json unreachable or unparseable"
+            LAG=-1
+          else
+            LAG=$((ONCHAIN - PUBLISHED))
+            echo "on-chain=$ONCHAIN published=$PUBLISHED lag=${LAG}s"
+          fi
+
+          # Publishing normally trails settling by under a minute. Alert once a
+          # day (UTC 08–09) rather than on every run, so a stuck keeper does not
+          # bury the channel — funds are unaffected, only the public chart is.
+          HOUR=$(date -u +%H)
+          case "$HOUR" in 08|09) WINDOW=1 ;; *) WINDOW=0 ;; esac
+
+          if [ "$WINDOW" = "1" ] && { [ "$LAG" = "-1" ] || [ "$LAG" -gt 10800 ]; }; then
+            if [ "$LAG" = "-1" ]; then
+              MSG="⚠️ [XP Vault] data/stats.json 을 읽을 수 없습니다 — 사이트 배포 또는 파일 확인 필요"
+            else
+              MSG="⚠️ [XP Vault] 정산은 되는데 통계가 $((LAG / 3600))시간 밀렸습니다. 키퍼의 stats push 실패로 소각 차트가 멈춰 있습니다 — record-stats.sh 로그를 확인해 주세요."
+            fi
+            [ -n "${SLACK_WEBHOOK:-}" ] && python3 - "$MSG" <<'PY' || true
+          import json, os, sys, urllib.request
+          req = urllib.request.Request(
+              os.environ["SLACK_WEBHOOK"],
+              json.dumps({"text": sys.argv[1]}).encode(),
+              {"Content-Type": "application/json"},
+          )
+          urllib.request.urlopen(req, timeout=10)
+          PY
+            echo "::warning::published stats lag = ${LAG}s"
+          fi
+
       - name: settle if eligible, alert if overdue
         env:
           SETTLE_PK: ${{ secrets.SETTLE_PK }}

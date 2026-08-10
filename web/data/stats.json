@@ -1,5 +1,5 @@
 {
-  "updated": "2026-08-07T05:35:16Z",
+  "updated": "2026-08-10T13:07:05Z",
   "days": [
     {
       "date": "2026-08-03",
@@ -35,6 +35,33 @@
       "burned": 1447.9986,
       "distributed": 2.0014,
       "tvl": 4601.0,
+      "aprPct": 15.88
+    },
+    {
+      "date": "2026-08-08",
+      "settledAt": 1786167315,
+      "settled": 1450.0,
+      "burned": 1447.9985,
+      "distributed": 2.0015,
+      "tvl": 4601.05,
+      "aprPct": 15.88
+    },
+    {
+      "date": "2026-08-09",
+      "settledAt": 1786254009,
+      "settled": 1450.0,
+      "burned": 1447.9985,
+      "distributed": 2.0015,
+      "tvl": 4601.05,
+      "aprPct": 15.82
+    },
+    {
+      "date": "2026-08-10",
+      "settledAt": 1786340419,
+      "settled": 1450.0,
+      "burned": 1447.9985,
+      "distributed": 2.0015,
+      "tvl": 4601.05,
       "aprPct": 15.88
     }
   ]
