@@ -46,7 +46,7 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     />
-    <link rel="stylesheet" href="styles.css?v=18" />
+    <link rel="stylesheet" href="styles.css?v=19" />
 
     <!-- Structured data. Keep the FAQ answers in sync with the #faq section below:
          Google penalises FAQPage markup that does not appear on the page. -->
@@ -190,6 +190,20 @@
         </div>
       </div>
     </header>
+
+    <!-- ─────────────  EVENT BAND  ─────────────
+         Sits under the nav and scrolls away with the page. Filled and
+         time-gated by renderBanner() from config.banner — it stays hidden
+         (and takes no space) outside the campaign window, so neither the
+         start nor the end needs a deploy. -->
+    <a class="eventbar" id="eventBar" href="#" target="_blank" rel="noopener" hidden>
+      <div class="eb-copy">
+        <span class="eb-badge"></span>
+        <strong class="eb-title"></strong>
+        <p class="eb-body"></p>
+      </div>
+      <span class="eb-cta"></span>
+    </a>
 
     <div class="ticker" aria-hidden="true">
       <div class="ticker-track" id="tickerTrack">
@@ -540,11 +554,11 @@
       // The public site (no query param) always loads the default config.js.
       (function () {
         var pick = new URLSearchParams(location.search).get("config");
-        var src = pick === "testnet" ? "config.testnet.js" : "config.js?v=6";
+        var src = pick === "testnet" ? "config.testnet.js" : "config.js?v=7";
         document.write('<script src="' + src + '"><\/script>');
       })();
     </script>
     <script src="zigap.js?v=4"></script>
-    <script src="app.js?v=28"></script>
+    <script src="app.js?v=29"></script>
   </body>
 </html>

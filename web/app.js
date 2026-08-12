@@ -1015,7 +1015,30 @@
     els.forEach((el) => io.observe(el));
   }
 
+  // Campaign band under the nav. Gated on a UTC window from config so the
+  // start and the end both happen on their own — a missed deploy would
+  // otherwise leave a dead form link on the page.
+  function renderBanner() {
+    const el = $("#eventBar");
+    const b = CFG.banner;
+    if (!el || !b || !b.enabled || !b.href) return;
+
+    const now = Date.now();
+    const from = b.startsAt ? Date.parse(b.startsAt) : -Infinity;
+    const to = b.endsAt ? Date.parse(b.endsAt) : Infinity;
+    if (Number.isNaN(from) || Number.isNaN(to)) return; // bad config: stay hidden
+    if (now < from || now >= to) return;
+
+    el.href = b.href;
+    el.querySelector(".eb-badge").textContent = b.badge || "EVENT";
+    el.querySelector(".eb-title").textContent = b.title || "";
+    el.querySelector(".eb-body").textContent = b.body || "";
+    el.querySelector(".eb-cta").textContent = b.cta || "Enter now";
+    el.hidden = false;
+  }
+
   function init() {
+    renderBanner();
     wireReveal();
     wireTicker();
     wireCapLabels(); // after wireTicker so cloned ticker sets are patched too

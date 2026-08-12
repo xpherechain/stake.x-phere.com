@@ -38,4 +38,19 @@ window.XP_CONFIG = {
   // Current stake cap (guarded launch), in whole XP. Raise to 35_000_000
   // together with the on-chain setStakeCap at full open.
   stakeCapXP: 2_000_000,
+
+  // Temporary top band. Shown only between startsAt and endsAt, so it appears
+  // and disappears on its own — no deploy needed at either end. Times are UTC;
+  // the comments give the KST the campaign was booked in.
+  // Set enabled:false to pull it early.
+  banner: {
+    enabled: true,
+    badge: "EVENT",
+    title: "Bonus XP for early stakers + big stakers",
+    body: "Stake in the first wave to lock in an early bonus, or stake a large amount for a size bonus — qualify for both and they stack.",
+    cta: "Enter now",
+    href: "https://forms.gle/6UhKFCCwewsWDAgW8",
+    startsAt: "2026-08-12T07:00:00Z", // 8/12(수) 16:00 KST
+    endsAt: "2026-08-25T15:00:00Z", // 8/25(화) 24:00 KST
+  },
 };
