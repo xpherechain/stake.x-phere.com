@@ -46,7 +46,7 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     />
-    <link rel="stylesheet" href="styles.css?v=21" />
+    <link rel="stylesheet" href="styles.css?v=22" />
 
     <!-- Structured data. Keep the FAQ answers in sync with the #faq section below:
          Google penalises FAQPage markup that does not appear on the page. -->
@@ -366,6 +366,16 @@
 
           <!-- stake -->
           <div class="panel active" data-panel="deposit">
+            <!-- Filled by renderCapNotice() from live cap/TVL. Hidden until
+                 round one is nearly gone. -->
+            <div class="capnotice" id="capNotice" hidden>
+              <div class="cn-head">
+                <span class="cn-tag"></span>
+                <b class="cn-left"></b>
+              </div>
+              <div class="cn-bar"><i></i></div>
+              <p class="cn-sub"></p>
+            </div>
             <label class="field">
               <span>Amount (XP)</span>
               <div class="field-row">
@@ -558,11 +568,11 @@
       // The public site (no query param) always loads the default config.js.
       (function () {
         var pick = new URLSearchParams(location.search).get("config");
-        var src = pick === "testnet" ? "config.testnet.js" : "config.js?v=8";
+        var src = pick === "testnet" ? "config.testnet.js" : "config.js?v=9";
         document.write('<script src="' + src + '"><\/script>');
       })();
     </script>
     <script src="zigap.js?v=4"></script>
-    <script src="app.js?v=33"></script>
+    <script src="app.js?v=34"></script>
   </body>
 </html>

@@ -32,6 +32,17 @@ window.XP_CONFIG = {
   // Feature flags. zigap: QR-wallet connect via the ZIGAP app.
   features: { zigap: true },
 
+  // Round-one cap is filling. Warn while there is still room, and say when
+  // the next tranche lands once there is none — a deposit that reverts with
+  // no explanation is the worst version of this moment.
+  // `at` is the timelock's executable time; clear the block once it is raised.
+  capRaise: {
+    enabled: true,
+    warnBelowPct: 85, // start showing the remaining amount past this fill level
+    at: "2026-08-14T09:20:00Z", // 8/14 18:20 KST
+    atLabel: "8월 14일(금) 오후 6시 20분",
+  },
+
   // Where someone with no XP goes to get some. Leave `url` empty to drop the
   // Buy XP links entirely rather than pointing them at a dead page.
   buyXp: {

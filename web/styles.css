@@ -159,6 +159,64 @@ section {
 }
 
 /* nav ------------------------------------------------------- */
+/* round-one capacity notice, inside the stake panel */
+.capnotice {
+  margin-bottom: 1.1rem;
+  padding: 0.85rem 1rem 0.95rem;
+  border: 1px solid rgba(255, 151, 56, 0.45);
+  border-radius: 12px;
+  background: rgba(255, 151, 56, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.capnotice[hidden] { display: none; }
+.capnotice.is-full {
+  border-color: rgba(231, 69, 58, 0.55);
+  background: rgba(231, 69, 58, 0.09);
+}
+.cn-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.cn-tag {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ember-2);
+}
+.capnotice.is-full .cn-tag { color: var(--ember); }
+.cn-left {
+  font-family: var(--font-mono);
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--cream);
+  font-variant-numeric: tabular-nums;
+}
+.cn-bar {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+}
+.cn-bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--brand-gradient);
+  transition: width 0.6s ease;
+}
+.cn-sub {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--ash);
+}
+
 /* buy XP — nav link and the inline one beside the wallet balance */
 .nav-buy {
   border: 1px solid var(--line-2, var(--line));

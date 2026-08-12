@@ -394,8 +394,37 @@
     }
   }
 
+  // Round-one capacity. Two states: still room but nearly gone, and gone.
+  // Both read from the chain, so this clears itself the moment the cap is
+  // raised — no deploy needed to take it down.
+  function renderCapNotice(tvl, cap) {
+    const el = $("#capNotice");
+    const c = CFG.capRaise;
+    if (!el || !c || !c.enabled || !(cap > 0)) return;
+
+    const pct = (tvl / cap) * 100;
+    if (pct < (c.warnBelowPct ?? 85)) {
+      el.hidden = true;
+      return;
+    }
+    const left = Math.max(0, cap - tvl);
+    const full = left <= 0;
+
+    el.classList.toggle("is-full", full);
+    el.querySelector(".cn-tag").textContent = full ? "1차 한도 마감" : "1차 한도 마감 임박";
+    el.querySelector(".cn-left").textContent = full
+      ? "남은 한도 0 XP"
+      : `남은 한도 ${Math.floor(left).toLocaleString("en-US")} XP`;
+    el.querySelector(".cn-bar i").style.width = Math.min(100, pct) + "%";
+    el.querySelector(".cn-sub").textContent = full
+      ? `${c.atLabel}에 추가 한도가 열립니다. 이미 예치하신 자산과 보상은 그대로입니다.`
+      : `전체 ${Math.round(cap).toLocaleString("en-US")} XP 중 ${pct.toFixed(1)}% 소진 · 추가 한도는 ${c.atLabel}`;
+    el.hidden = false;
+  }
+
   function renderMetrics({ tvl, apr, burned, cap }) {
     lastApr = apr;
+    renderCapNotice(tvl, cap);
     updateEstimate();
     animateTo($('[data-metric="tvl"]'), tvl, (n) => fmtNum(n) + " XP");
     animateTo($('[data-metric="apr"]'), apr * 100, (n) => n.toFixed(2) + "%");
