@@ -32,6 +32,13 @@ window.XP_CONFIG = {
   // Feature flags. zigap: QR-wallet connect via the ZIGAP app.
   features: { zigap: true },
 
+  // Where someone with no XP goes to get some. Leave `url` empty to drop the
+  // Buy XP links entirely rather than pointing them at a dead page.
+  buyXp: {
+    name: "MEXC",
+    url: "https://www.mexc.com/exchange/XP_USDT",
+  },
+
   // Partner slugs shown on the leaderboard. partnerId = keccak256(slug).
   partners: ["ankr", "nansen"],
 

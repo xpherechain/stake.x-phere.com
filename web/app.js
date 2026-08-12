@@ -694,6 +694,9 @@
       setMe("walletBal", balTxt);
       const sb = $("#stakeBal");
       if (sb) sb.textContent = balTxt;
+      // Someone staring at a balance too small to stake needs somewhere to go.
+      // Gas has to survive the transaction, so "enough" is a little above zero.
+      markBuyXp(nativeBal <= 1_000_000_000_000_000_000n); // ≤ 1 XP
       const rb = $("#redBal");
       if (rb) rb.textContent = fmtXP(principal, { compact: false }) + " XP";
       const wmA = $("#wmAddr"), wmB = $("#wmBal");
@@ -1054,6 +1057,25 @@
     els.forEach((el) => io.observe(el));
   }
 
+  // Buy XP. Both links come from one config entry; an empty url leaves them
+  // hidden rather than sending anyone to a dead exchange page.
+  function wireBuyXp() {
+    const b = CFG.buyXp;
+    if (!b || !b.url) return;
+    for (const id of ["#navBuyXp", "#buyXpInline"]) {
+      const el = $(id);
+      if (!el) continue;
+      el.href = b.url;
+      el.title = `${b.name}에서 XP 구매`;
+      el.hidden = false;
+    }
+  }
+
+  // Emphasise the inline link only once we know the wallet is short of XP.
+  function markBuyXp(needed) {
+    $("#buyXpInline")?.classList.toggle("needed", !!needed);
+  }
+
   // Campaign band under the nav. Gated on a UTC window from config so the
   // start and the end both happen on their own — a missed deploy would
   // otherwise leave a dead form link on the page.
@@ -1083,6 +1105,7 @@
 
   function init() {
     renderBanner();
+    wireBuyXp();
     wireReveal();
     wireTicker();
     wireCapLabels(); // after wireTicker so cloned ticker sets are patched too

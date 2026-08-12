@@ -159,6 +159,32 @@ section {
 }
 
 /* nav ------------------------------------------------------- */
+/* buy XP — nav link and the inline one beside the wallet balance */
+.nav-buy {
+  border: 1px solid var(--line-2, var(--line));
+  border-radius: 999px;
+  padding: 0.28rem 0.72rem;
+  white-space: nowrap;
+}
+.nav-buy:hover { border-color: var(--ember); color: var(--cream); }
+.buy-inline {
+  margin-left: 0.55rem;
+  color: var(--ember-2);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  white-space: nowrap;
+}
+.buy-inline:hover { border-bottom-color: currentColor; }
+/* Nudge it only when the wallet is connected and short of XP — otherwise it
+   is a quiet link, not a sales pitch. */
+.buy-inline.needed {
+  color: var(--cream);
+  border: 1px solid var(--ember);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  background: color-mix(in srgb, var(--ember) 14%, transparent);
+}
+
 /* event band — under the nav, scrolls away with the page ---- */
 .eventbar {
   display: flex;
