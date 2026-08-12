@@ -265,8 +265,17 @@ def describe(ev, ts):
 def cmd_watch(argv):
     quiet = "--quiet" in argv  # backfill without spamming the channel
     head = block_number()
-    start_default = block_at_time(EVENT_START) if "--from-event" in argv else head
-    frm = read_checkpoint(start_default) + 1
+
+    # The checkpoint has to be written on the very first run, even when there
+    # is nothing to scan. Returning early without one meant every later run
+    # re-defaulted to the current head, so the file never appeared and no block
+    # was ever scanned — the watcher stayed silent forever.
+    if not os.path.exists(CHECKPOINT):
+        anchor = block_at_time(EVENT_START) - 1 if "--from-event" in argv else head
+        write_checkpoint(anchor)
+        print(f"checkpoint initialised at {anchor}")
+
+    frm = read_checkpoint(head) + 1
     if frm > head:
         print(f"nothing new (checkpoint {frm - 1}, head {head})")
         return
