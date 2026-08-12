@@ -8,6 +8,11 @@
 /web/.playwright-mcp/
 /*.png
 !web/assets/*.png
+# keeper runtime state — checkpoints, ledgers, generated snapshots.
+# Machine-local by design: the event ledger is rebuilt from chain if lost.
+/ops/state/
+/ops/out/
+
 # tool state
 .playwright-mcp/
 docs/.pdca-status.json
@@ -26,3 +31,7 @@ ops/.env.*
 !ops/.env.example
 *.log
 private-docs/
+
+# python bytecode
+__pycache__/
+*.pyc

@@ -60,6 +60,21 @@ SWEPT="0"
 if [ -n "${COLLECTOR_PK:-}" ]; then
   COLLECTOR=$(cast wallet address --private-key "$COLLECTOR_PK")
   BAL=$(cast balance "$COLLECTOR" --rpc-url "$RPC")
+
+  # 1a) 유니온 노드 입금 감지.
+  #     수령지갑에는 노드 보상 외 유입이 없으므로, 직전 실행이 끝난 시점의
+  #     잔고와 지금 잔고의 차이가 그 사이 들어온 노드 보상이다. 스윕이
+  #     잔고를 비우기 전에 읽어야 하므로 반드시 이 위치여야 한다.
+  mkdir -p ./state
+  LAST_BAL_FILE=./state/collector-balance.txt
+  if [ -f "$LAST_BAL_FILE" ]; then
+    LAST_BAL=$(cat "$LAST_BAL_FILE")
+    INFLOW=$(python3 -c "print(max(0, $BAL - $LAST_BAL))")
+    if python3 -c "exit(0 if int('$INFLOW') >= int('${DEPOSIT_ALERT_WEI:-100000000000000000000}') else 1)"; then
+      log "node deposit +$(cast to-unit $INFLOW ether) XP"
+      notify "🟢 [XP Vault] 유니온 노드 보상 입금${nl}수량: $(cast to-unit $INFLOW ether) XP${nl}수령지갑 잔고: $(cast to-unit $BAL ether) XP"
+    fi
+  fi
   SWEEP=$(python3 -c "print(max(0, $BAL - ${GAS_RESERVE_WEI:-0}))")
   if [ -n "${SWEEP_LIMIT_WEI:-}" ]; then
     PEND_NOW=$(cast call "$DIST" "pendingSettlement()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
@@ -102,13 +117,21 @@ if [ -n "${COLLECTOR_PK:-}" ] && [ -n "${COLD_ADDR:-}" ]; then
     PEND_AFTER=$(cast call "$DIST" "pendingSettlement()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
     log "evacuate $(cast to-unit $EVAC ether) XP -> cold (settle budget already funded: $(cast to-unit $PEND_AFTER ether)/$(cast to-unit ${SWEEP_LIMIT_WEI:-0} ether) XP)"
     if cast send "$COLD_ADDR" --value "$EVAC" --rpc-url "$RPC" --private-key "$COLLECTOR_PK" >/dev/null; then
-      log "evacuated"
-      notify "🔐 [XP Vault] 콜드월렛 대피 $(cast to-unit $EVAC ether) XP${nl}수령지갑 잔여: $(cast to-unit $(cast balance "$COLLECTOR" --rpc-url "$RPC") ether) XP"
+      # 성공은 로그만 남긴다. 정상 동작이 하루 여러 번 반복되는 일이라
+      # 슬랙으로 보내면 정작 봐야 할 알림이 묻힌다. 실패는 그대로 알린다.
+      log "evacuated $(cast to-unit $EVAC ether) XP -> cold"
     else
       log "evacuate FAILED"
       notify "🚨 [XP Vault] 콜드월렛 대피 실패 — 수령지갑에 $(cast to-unit $EVAC ether) XP 잔류. 가스/RPC 확인 필요."
     fi
   fi
+fi
+
+# 수령지갑 잔고를 기록해 둔다. 다음 실행에서 이 값과의 차이로 노드 입금을
+# 판정하므로, 스윕·대피가 모두 끝난 뒤여야 한다.
+if [ -n "${COLLECTOR_PK:-}" ]; then
+  mkdir -p ./state
+  cast balance "$COLLECTOR" --rpc-url "$RPC" > ./state/collector-balance.txt 2>/dev/null || true
 fi
 
 # 2) settle (에폭 경과 + minSettle 충족 시)
