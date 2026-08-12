@@ -1023,11 +1023,16 @@
     const b = CFG.banner;
     if (!el || !b || !b.enabled || !b.href) return;
 
-    const now = Date.now();
-    const from = b.startsAt ? Date.parse(b.startsAt) : -Infinity;
-    const to = b.endsAt ? Date.parse(b.endsAt) : Infinity;
-    if (Number.isNaN(from) || Number.isNaN(to)) return; // bad config: stay hidden
-    if (now < from || now >= to) return;
+    // ?preview=banner shows it outside the booked window, so the copy can be
+    // signed off before go-live without editing config or the console.
+    const preview = new URLSearchParams(location.search).get("preview") === "banner";
+    if (!preview) {
+      const now = Date.now();
+      const from = b.startsAt ? Date.parse(b.startsAt) : -Infinity;
+      const to = b.endsAt ? Date.parse(b.endsAt) : Infinity;
+      if (Number.isNaN(from) || Number.isNaN(to)) return; // bad config: stay hidden
+      if (now < from || now >= to) return;
+    }
 
     el.href = b.href;
     el.querySelector(".eb-badge").textContent = b.badge || "EVENT";
