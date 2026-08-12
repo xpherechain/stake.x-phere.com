@@ -40,7 +40,7 @@ window.XP_CONFIG = {
     enabled: true,
     warnBelowPct: 85, // start showing the remaining amount past this fill level
     at: "2026-08-14T09:20:00Z", // 8/14 18:20 KST
-    atLabel: "8월 14일(금) 오후 6시 20분",
+    atLabel: "Fri 14 Aug, 18:20 KST",
   },
 
   // Where someone with no XP goes to get some. Leave `url` empty to drop the
@@ -68,7 +68,7 @@ window.XP_CONFIG = {
     body: "Stake in the first wave to lock in an early bonus, or stake a large amount for a size bonus — qualify for both and they stack.",
     cta: "Enter now",
     href: "https://forms.gle/6UhKFCCwewsWDAgW8",
-    startsAt: "2026-08-12T07:00:00Z", // 8/12(수) 16:00 KST
-    endsAt: "2026-08-25T15:00:00Z", // 8/25(화) 24:00 KST
+    startsAt: "2026-08-12T07:00:00Z", // Wed 12 Aug, 16:00 KST
+    endsAt: "2026-08-25T15:00:00Z", // Tue 25 Aug, 24:00 KST
   },
 };

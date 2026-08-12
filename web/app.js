@@ -411,14 +411,14 @@
     const full = left <= 0;
 
     el.classList.toggle("is-full", full);
-    el.querySelector(".cn-tag").textContent = full ? "1차 한도 마감" : "1차 한도 마감 임박";
+    el.querySelector(".cn-tag").textContent = full ? "Round 1 cap reached" : "Round 1 cap almost gone";
     el.querySelector(".cn-left").textContent = full
-      ? "남은 한도 0 XP"
-      : `남은 한도 ${Math.floor(left).toLocaleString("en-US")} XP`;
+      ? "0 XP left"
+      : `${Math.floor(left).toLocaleString("en-US")} XP left`;
     el.querySelector(".cn-bar i").style.width = Math.min(100, pct) + "%";
     el.querySelector(".cn-sub").textContent = full
-      ? `${c.atLabel}에 추가 한도가 열립니다. 이미 예치하신 자산과 보상은 그대로입니다.`
-      : `전체 ${Math.round(cap).toLocaleString("en-US")} XP 중 ${pct.toFixed(1)}% 소진 · 추가 한도는 ${c.atLabel}`;
+      ? `More capacity opens ${c.atLabel}. Deposits already made keep earning — nothing changes for them.`
+      : `${pct.toFixed(1)}% of the ${Math.round(cap).toLocaleString("en-US")} XP cap is taken · more opens ${c.atLabel}`;
     el.hidden = false;
   }
 
@@ -1095,7 +1095,7 @@
       const el = $(id);
       if (!el) continue;
       el.href = b.url;
-      el.title = `${b.name}에서 XP 구매`;
+      el.title = `Buy XP on ${b.name}`;
       el.hidden = false;
     }
   }
