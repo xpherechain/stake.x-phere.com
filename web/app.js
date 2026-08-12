@@ -1062,7 +1062,7 @@
   function wireBuyXp() {
     const b = CFG.buyXp;
     if (!b || !b.url) return;
-    for (const id of ["#navBuyXp", "#buyXpInline"]) {
+    for (const id of ["#navBuyXp", "#buyXpInline", "#heroBuyXp"]) {
       const el = $(id);
       if (!el) continue;
       el.href = b.url;
