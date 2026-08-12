@@ -35,6 +35,8 @@
     "function pendingSettlement() view returns (uint256)",
     "function nextSettleTime() view returns (uint256)",
     "function lastSettlement() view returns (uint64 settledAt, uint256 totalAmount, uint256 burned, uint256 distributed)",
+    "function distributionRatioBps() view returns (uint16)",
+    "function epochDuration() view returns (uint256)",
   ];
 
   const WXP_ABI = ["function balanceOf(address) view returns (uint256)"];
@@ -306,18 +308,21 @@
     try {
       const vault = new E.Contract(CFG.contracts.vault, VAULT_ABI, readProvider);
       const dist = new E.Contract(CFG.contracts.distributor, DIST_ABI, readProvider);
-      const [tvl, apr, cap, burned, pending, nextTs, rr, pf, cd, lastS] = await Promise.all([
-        vault.totalAssets(),
-        vault.currentAPR(),
-        vault.stakeCap(),
-        dist.totalBurned().catch(() => 0n),
-        dist.pendingSettlement().catch(() => 0n),
-        dist.nextSettleTime().catch(() => 0n),
-        vault.rewardRate().catch(() => 0n),
-        vault.periodFinish().catch(() => 0n),
-        vault.cooldownPeriod().catch(() => 604800n),
-        dist.lastSettlement().catch(() => null),
-      ]);
+      const [tvl, apr, cap, burned, pending, nextTs, rr, pf, cd, lastS, ratioBps, epochS] =
+        await Promise.all([
+          vault.totalAssets(),
+          vault.currentAPR(),
+          vault.stakeCap(),
+          dist.totalBurned().catch(() => 0n),
+          dist.pendingSettlement().catch(() => 0n),
+          dist.nextSettleTime().catch(() => 0n),
+          vault.rewardRate().catch(() => 0n),
+          vault.periodFinish().catch(() => 0n),
+          vault.cooldownPeriod().catch(() => 604800n),
+          dist.lastSettlement().catch(() => null),
+          dist.distributionRatioBps().catch(() => 0),
+          dist.epochDuration().catch(() => 86400n),
+        ]);
       lastTvl = Number(E.formatEther(tvl));
       rrXPs = Number(E.formatEther(rr));
       rrFinish = Number(pf);
@@ -335,7 +340,7 @@
       }
       renderMetrics({
         tvl: Number(E.formatEther(tvl)),
-        apr: Number(apr) / 1e18,
+        apr: displayApr({ apr, lastS, ratioBps, epochS, tvl, cap, E }),
         burned: Number(E.formatEther(burned)),
         cap: Number(E.formatEther(cap)),
       });
@@ -352,6 +357,40 @@
       $("#demoBadge").hidden = false;
       $("#demoBadge").textContent = "rpc unreachable · showing demo data";
       renderMetrics({ tvl: demo.tvl, apr: demo.apr, burned: demo.burned, cap: demo.cap });
+    }
+  }
+
+  // The rate a staker actually earns, rebuilt from the same inputs the
+  // contract settles on.
+  //
+  // `currentAPR()` divides a number fixed at settlement — the reward, sized
+  // against the vault as it stood then — by totalAssets *right now*. The two
+  // sides describe different moments, so every mid-epoch deposit drags the
+  // figure down even though nobody's earnings changed. It recovers at the next
+  // settlement. During a campaign that reads as "I deposited and my rate fell",
+  // which is not what happened.
+  //
+  //   settled amount × split × (year / epoch) ÷ max(TVL, cap)
+  //
+  // Below the cap the denominator is the cap, so the rate holds steady no
+  // matter how much is staked — the reward scales with the vault. Above it the
+  // reward stops growing and TVL takes over as the denominator, so the rate
+  // genuinely falls. `max()` covers both without a special case.
+  //
+  // The contract is immutable, so this lives here. status.html still shows the
+  // raw on-chain figure beside it.
+  function displayApr({ apr, lastS, ratioBps, epochS, tvl, cap, E }) {
+    const onchain = Number(apr) / 1e18;
+    try {
+      if (!lastS || Number(lastS.settledAt) === 0) return onchain;
+      const amount = Number(E.formatEther(lastS.totalAmount));
+      const split = Number(ratioBps) / 10000;
+      const epoch = Number(epochS) || 86400;
+      const denom = Math.max(Number(E.formatEther(tvl)), Number(E.formatEther(cap)));
+      if (!(amount > 0 && split > 0 && denom > 0)) return onchain;
+      return (amount * split * (31536000 / epoch)) / denom;
+    } catch {
+      return onchain; // never let a display refinement break the number
     }
   }
 

@@ -111,6 +111,19 @@
 
     const now = Math.floor(Date.now() / 1000);
 
+    // Rate a staker actually earns, rebuilt from the settlement inputs.
+    // currentAPR() pairs a reward fixed at settlement with a live totalAssets,
+    // so it dips on every mid-epoch deposit and recovers at the next one. Both
+    // figures are shown here — this card is the headline, the raw on-chain
+    // value sits underneath it, so the difference is visible rather than hidden.
+    let stakingApr = apr !== null ? Number(apr) / 1e16 : null;
+    if (lastS && Number(lastS.settledAt) > 0 && ratioBps && epoch) {
+      const denom = Math.max(fe(tvl), fe(cap));
+      if (denom > 0) {
+        stakingApr = (fe(lastS.totalAmount) * (Number(ratioBps) / 10000) * (31536000 / Number(epoch)) * 100) / denom;
+      }
+    }
+
     // ── health checks ──
     const oblig = (tvl ?? 0n) + (pendingRedeem ?? 0n) + (reserves ?? 0n);
     const solvent = held !== null && held >= oblig;
@@ -157,7 +170,8 @@
     // ── metrics ──
     $("metrics").innerHTML =
       card("Total value locked", `${fn(fe(tvl))} <small>XP</small>`, "", `${fn(utilization, 2)}% of ${fn(fe(cap), 0)} XP cap`) +
-      card("Staking APR", apr !== null ? (Number(apr) / 1e16).toFixed(2) + " <small>%</small>" : "—", "", "from real validator revenue") +
+      card("Staking APR", stakingApr !== null ? stakingApr.toFixed(2) + " <small>%</small>" : "—", "",
+           apr !== null ? `on-chain currentAPR() reads ${(Number(apr) / 1e16).toFixed(2)}%` : "from real validator revenue") +
       card("Burned forever", `${fn(fe(burned))} <small>XP</small>`, "burn", "removed from supply") +
       card("Paid to stakers", `${fn(fe(distributed))} <small>XP</small>`, "ok", "lifetime distributed") +
       card("Queued for next burn", `${fn(fe(pending))} <small>XP</small>`, fe(pending) > 0 ? "warn" : "", "sitting in the distributor");
