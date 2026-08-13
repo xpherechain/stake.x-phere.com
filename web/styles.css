@@ -290,6 +290,28 @@ section {
   line-height: 1.5;
   color: rgba(25, 5, 1, 0.78);
 }
+/* round status, sits in the band between the copy and the call to action */
+.eb-round {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  padding: 0.8rem 1.15rem;
+  border-radius: 12px;
+  background: var(--ink);
+  color: var(--bone);
+  text-align: left;
+}
+.eb-round[hidden] { display: none; }
+.eb-round strong { font-size: 0.9rem; font-weight: 600; letter-spacing: -0.01em; }
+.eb-round em {
+  font-family: var(--font-mono);
+  font-style: normal;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--ember-2);
+}
+
 .eb-cta {
   display: inline-flex;
   align-items: center;

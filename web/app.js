@@ -403,21 +403,37 @@
     if (!el || !c || !c.enabled || !(cap > 0)) return;
 
     const pct = (tvl / cap) * 100;
+    // A cap is "gone" before it is mathematically zero — a fraction of an XP
+    // left will fail every realistic deposit, so treat that as closed rather
+    // than advertising room nobody can use.
+    const left = Math.max(0, cap - tvl);
+    const full = left < 1;
+
+    // Round status inside the event band, visible without scrolling.
+    const rb = $("#ebRound");
+    if (rb) {
+      if (full) {
+        rb.querySelector("strong").textContent = c.closedTitle || "Round 1 pool closed";
+        rb.querySelector("em").textContent = `ROUND 2 OPENS — ${c.atLabel}`;
+        rb.hidden = false;
+      } else {
+        rb.hidden = true;
+      }
+    }
+
     if (pct < (c.warnBelowPct ?? 85)) {
       el.hidden = true;
       return;
     }
-    const left = Math.max(0, cap - tvl);
-    const full = left <= 0;
 
     el.classList.toggle("is-full", full);
-    el.querySelector(".cn-tag").textContent = full ? "Round 1 cap reached" : "Round 1 cap almost gone";
+    el.querySelector(".cn-tag").textContent = full ? "Round 1 pool closed" : "Round 1 cap almost gone";
     el.querySelector(".cn-left").textContent = full
-      ? "0 XP left"
+      ? "Round 2 — " + c.atLabel
       : `${Math.floor(left).toLocaleString("en-US")} XP left`;
     el.querySelector(".cn-bar i").style.width = Math.min(100, pct) + "%";
     el.querySelector(".cn-sub").textContent = full
-      ? `More capacity opens ${c.atLabel}. Deposits already made keep earning — nothing changes for them.`
+      ? `All ${Math.round(cap).toLocaleString("en-US")} XP was taken. New deposits reopen with a larger cap at the time above — deposits already made keep earning, nothing changes for them.`
       : `${pct.toFixed(1)}% of the ${Math.round(cap).toLocaleString("en-US")} XP cap is taken · more opens ${c.atLabel}`;
     el.hidden = false;
   }

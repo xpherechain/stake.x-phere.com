@@ -36,11 +36,15 @@ window.XP_CONFIG = {
   // the next tranche lands once there is none — a deposit that reverts with
   // no explanation is the worst version of this moment.
   // `at` is the timelock's executable time; clear the block once it is raised.
+  // Timelock puts the raise at 2026-08-14 09:19:32 UTC; 09:20 is the first
+  // clean minute after it. Both zones are spelled out — the audience is split
+  // between them and "18:20" alone has been misread before.
   capRaise: {
     enabled: true,
     warnBelowPct: 85, // start showing the remaining amount past this fill level
-    at: "2026-08-14T09:20:00Z", // 8/14 18:20 KST
-    atLabel: "Fri 14 Aug, 18:20 KST",
+    at: "2026-08-14T09:20:00Z",
+    atLabel: "Aug 14, 09:20 UTC (18:20 KST)",
+    closedTitle: "Thank you — Round 1 pool closed",
   },
 
   // Where someone with no XP goes to get some. Leave `url` empty to drop the

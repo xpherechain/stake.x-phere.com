@@ -46,7 +46,7 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     />
-    <link rel="stylesheet" href="styles.css?v=22" />
+    <link rel="stylesheet" href="styles.css?v=23" />
 
     <!-- Structured data. Keep the FAQ answers in sync with the #faq section below:
          Google penalises FAQPage markup that does not appear on the page. -->
@@ -202,6 +202,11 @@
         <span class="eb-badge"></span>
         <strong class="eb-title"></strong>
         <p class="eb-body"></p>
+      </div>
+      <!-- Shown by renderCapNotice() once the round-one cap is gone. -->
+      <div class="eb-round" id="ebRound" hidden>
+        <strong></strong>
+        <em></em>
       </div>
       <span class="eb-cta"></span>
     </a>
@@ -568,11 +573,11 @@
       // The public site (no query param) always loads the default config.js.
       (function () {
         var pick = new URLSearchParams(location.search).get("config");
-        var src = pick === "testnet" ? "config.testnet.js" : "config.js?v=10";
+        var src = pick === "testnet" ? "config.testnet.js" : "config.js?v=11";
         document.write('<script src="' + src + '"><\/script>');
       })();
     </script>
     <script src="zigap.js?v=4"></script>
-    <script src="app.js?v=35"></script>
+    <script src="app.js?v=36"></script>
   </body>
 </html>
