@@ -45,11 +45,12 @@ window.XP_CONFIG = {
   // a number the vault will not approach for months.
   // Deposits are never blocked by this; only the on-chain cap can do that.
   // Bump `label`/`target` when a round is met.
+  // Rounds cleared so far: 1 at 2M, 2 at 5M, 3 at 10M.
   round: {
     enabled: true,
-    label: "Round 2",
-    target: 5_000_000,
-    openedLabel: "Round 1 closed at 2M — Round 2 is live",
+    label: "Round 4",
+    target: 20_000_000,
+    openedLabel: "Rounds 1–3 filled — Round 4 is live",
   },
 
   // Where someone with no XP goes to get some. Leave `url` empty to drop the

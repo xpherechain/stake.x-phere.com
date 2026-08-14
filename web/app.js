@@ -340,7 +340,7 @@
       }
       renderMetrics({
         tvl: Number(E.formatEther(tvl)),
-        apr: displayApr({ apr, lastS, ratioBps, epochS, tvl, cap, E }),
+        apr: displayApr({ apr, lastS, ratioBps, epochS, tvl, cap, pending, E }),
         burned: Number(E.formatEther(burned)),
         cap: Number(E.formatEther(cap)),
       });
@@ -379,14 +379,30 @@
   //
   // The contract is immutable, so this lives here. status.html still shows the
   // raw on-chain figure beside it.
-  function displayApr({ apr, lastS, ratioBps, epochS, tvl, cap, E }) {
+  function displayApr({ apr, lastS, ratioBps, epochS, tvl, cap, pending, E }) {
     const onchain = Number(apr) / 1e18;
     try {
       if (!lastS || Number(lastS.settledAt) === 0) return onchain;
-      const amount = Number(E.formatEther(lastS.totalAmount));
       const split = Number(ratioBps) / 10000;
       const epoch = Number(epochS) || 86400;
       const denom = Math.max(Number(E.formatEther(tvl)), Number(E.formatEther(cap)));
+      let amount = Number(E.formatEther(lastS.totalAmount));
+
+      // How much goes in each day can change between settlements — the switch
+      // to sweeping the full node revenue multiplied it fourteen-fold. Until
+      // the next settlement lands, the last one describes the old regime and
+      // understates what a depositor now earns.
+      //
+      // What has actually accumulated this epoch is the better evidence, so
+      // project it to a full epoch and take whichever is larger. An hour of
+      // accumulation is required first: earlier than that the extrapolation
+      // swings wildly on a few blocks.
+      const elapsed = Date.now() / 1000 - Number(lastS.settledAt);
+      if (pending != null && elapsed > 3600) {
+        const projected = (Number(E.formatEther(pending)) / elapsed) * epoch;
+        if (isFinite(projected)) amount = Math.max(amount, projected);
+      }
+
       if (!(amount > 0 && split > 0 && denom > 0)) return onchain;
       return (amount * split * (31536000 / epoch)) / denom;
     } catch {
