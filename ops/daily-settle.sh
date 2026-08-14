@@ -76,13 +76,21 @@ if [ -n "${COLLECTOR_PK:-}" ]; then
     fi
   fi
   SWEEP=$(python3 -c "print(max(0, $BAL - ${GAS_RESERVE_WEI:-0}))")
+  # PEND_NOW is only meaningful in partial-sweep mode, but the log line below
+  # reads it either way — under `set -u` an unset one kills the script right
+  # before the transfer, so give it a value in both modes.
+  PEND_NOW=0
   if [ -n "${SWEEP_LIMIT_WEI:-}" ]; then
     PEND_NOW=$(cast call "$DIST" "pendingSettlement()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
     SWEEP=$(python3 -c "print(min($SWEEP, max(0, ${SWEEP_LIMIT_WEI} - $PEND_NOW)))")
   fi
   # NOTE: wei amounts exceed bash's 64-bit integers — compare via python
   if python3 -c "exit(0 if int('$SWEEP') > 0 else 1)"; then
-    log "sweep $(cast to-unit $SWEEP ether) XP -> distributor (budget $(cast to-unit $PEND_NOW ether)/$(cast to-unit ${SWEEP_LIMIT_WEI:-0} ether) XP before)"
+    if [ -n "${SWEEP_LIMIT_WEI:-}" ]; then
+      log "sweep $(cast to-unit $SWEEP ether) XP -> distributor (budget $(cast to-unit $PEND_NOW ether)/$(cast to-unit ${SWEEP_LIMIT_WEI} ether) XP before)"
+    else
+      log "sweep $(cast to-unit $SWEEP ether) XP -> distributor (full sweep)"
+    fi
     if cast send "$DIST" --value "$SWEEP" --rpc-url "$RPC" --private-key "$COLLECTOR_PK" >/dev/null; then
       SWEPT=$(cast to-unit $SWEEP ether)
     else

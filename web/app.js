@@ -397,44 +397,53 @@
   // Round-one capacity. Two states: still room but nearly gone, and gone.
   // Both read from the chain, so this clears itself the moment the cap is
   // raised — no deploy needed to take it down.
+  // Progress against the round target, plus a hard stop if the on-chain cap
+  // itself is exhausted. The two are different things and must not be blurred:
+  // hitting the round target is a milestone and deposits continue, hitting the
+  // cap actually rejects them.
   function renderCapNotice(tvl, cap) {
     const el = $("#capNotice");
-    const c = CFG.capRaise;
-    if (!el || !c || !c.enabled || !(cap > 0)) return;
+    const r = CFG.round;
+    if (!el || !r || !r.enabled || !(cap > 0)) return;
 
-    const pct = (tvl / cap) * 100;
     // A cap is "gone" before it is mathematically zero — a fraction of an XP
-    // left will fail every realistic deposit, so treat that as closed rather
+    // left rejects every realistic deposit, so treat that as closed rather
     // than advertising room nobody can use.
-    const left = Math.max(0, cap - tvl);
-    const full = left < 1;
+    const capLeft = Math.max(0, cap - tvl);
+    const capFull = capLeft < 1;
 
-    // Round status inside the event band, visible without scrolling.
+    const target = r.target || cap;
+    const pct = Math.min(100, (tvl / target) * 100);
+    const left = Math.max(0, target - tvl);
+    const hit = left < 1;
+
+    // Round banner, visible without scrolling.
     const rb = $("#ebRound");
     if (rb) {
-      if (full) {
-        rb.querySelector("strong").textContent = c.closedTitle || "Round 1 pool closed";
-        rb.querySelector("em").textContent = `ROUND 2 OPENS — ${c.atLabel}`;
-        rb.hidden = false;
-      } else {
-        rb.hidden = true;
-      }
+      rb.querySelector("strong").textContent = capFull
+        ? "Round paused — cap reached"
+        : r.openedLabel || `${r.label} is live`;
+      rb.querySelector("em").textContent = capFull
+        ? "NEW CAPACITY OPENING SHORTLY"
+        : `${r.label.toUpperCase()} TARGET — ${(target / 1_000_000).toFixed(0)}M XP`;
+      rb.hidden = false;
     }
 
-    if (pct < (c.warnBelowPct ?? 85)) {
-      el.hidden = true;
-      return;
-    }
-
-    el.classList.toggle("is-full", full);
-    el.querySelector(".cn-tag").textContent = full ? "Round 1 pool closed" : "Round 1 cap almost gone";
-    el.querySelector(".cn-left").textContent = full
-      ? "Round 2 — " + c.atLabel
-      : `${Math.floor(left).toLocaleString("en-US")} XP left`;
-    el.querySelector(".cn-bar i").style.width = Math.min(100, pct) + "%";
-    el.querySelector(".cn-sub").textContent = full
-      ? `All ${Math.round(cap).toLocaleString("en-US")} XP was taken. New deposits reopen with a larger cap at the time above — deposits already made keep earning, nothing changes for them.`
-      : `${pct.toFixed(1)}% of the ${Math.round(cap).toLocaleString("en-US")} XP cap is taken · more opens ${c.atLabel}`;
+    el.classList.toggle("is-full", capFull || hit);
+    el.querySelector(".cn-tag").textContent = capFull
+      ? "Deposits paused — cap reached"
+      : hit
+        ? `${r.label} target reached`
+        : `${r.label} in progress`;
+    el.querySelector(".cn-left").textContent = capFull
+      ? "0 XP left"
+      : `${Math.floor(tvl).toLocaleString("en-US")} / ${target.toLocaleString("en-US")} XP`;
+    el.querySelector(".cn-bar i").style.width = pct + "%";
+    el.querySelector(".cn-sub").textContent = capFull
+      ? "The on-chain cap is full. Deposits already made keep earning — nothing changes for them."
+      : hit
+        ? `${r.label} target met. Staking stays open — the next round is already running.`
+        : `${pct.toFixed(1)}% of the ${r.label} target · staking is open now`;
     el.hidden = false;
   }
 

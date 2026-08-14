@@ -39,12 +39,17 @@ window.XP_CONFIG = {
   // Timelock puts the raise at 2026-08-14 09:19:32 UTC; 09:20 is the first
   // clean minute after it. Both zones are spelled out — the audience is split
   // between them and "18:20" alone has been misread before.
-  capRaise: {
+  // Rollout is communicated in rounds. The on-chain cap is raised in one step
+  // and stays the real limit — this is only the target the current round is
+  // working towards, so progress reads against something reachable instead of
+  // a number the vault will not approach for months.
+  // Deposits are never blocked by this; only the on-chain cap can do that.
+  // Bump `label`/`target` when a round is met.
+  round: {
     enabled: true,
-    warnBelowPct: 85, // start showing the remaining amount past this fill level
-    at: "2026-08-14T09:20:00Z",
-    atLabel: "Aug 14, 09:20 UTC (18:20 KST)",
-    closedTitle: "Thank you — Round 1 pool closed",
+    label: "Round 2",
+    target: 5_000_000,
+    openedLabel: "Round 1 closed at 2M — Round 2 is live",
   },
 
   // Where someone with no XP goes to get some. Leave `url` empty to drop the

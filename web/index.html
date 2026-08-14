@@ -573,11 +573,11 @@
       // The public site (no query param) always loads the default config.js.
       (function () {
         var pick = new URLSearchParams(location.search).get("config");
-        var src = pick === "testnet" ? "config.testnet.js" : "config.js?v=11";
+        var src = pick === "testnet" ? "config.testnet.js" : "config.js?v=12";
         document.write('<script src="' + src + '"><\/script>');
       })();
     </script>
     <script src="zigap.js?v=4"></script>
-    <script src="app.js?v=36"></script>
+    <script src="app.js?v=37"></script>
   </body>
 </html>
