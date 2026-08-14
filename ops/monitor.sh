@@ -93,9 +93,37 @@ if [ -n "${COLLECTOR_PK:-}" ]; then
   fi
 fi
 
+# 현황 블록. 경보만 보내면 "그래서 지금 얼마인데"를 매번 손으로 조회하게 된다.
+# 이미 위에서 읽은 값들이라 RPC 호출이 늘지 않는다.
+xp() { cast to-unit "${1:-0}" ether | awk '{printf "%\047.2f", $1}'; }
+cap=$(c "$VAULT" "stakeCap()(uint256)")
+burned=$(c "$DIST" "totalBurned()(uint256)")
+free=$(python3 -c "print(max(0, $held - $oblig))")
+util=$(python3 -c "print(f'{$staked/$cap*100:.2f}' if $cap else '0')")
+till=$(python3 -c "
+d=$next-$now
+print('%dh %dm 후' % (d//3600,(d%3600)//60) if d>0 else '%dh %dm 지연' % (-d//3600,(-d%3600)//60))")
+
+state="📊 현황 ($(date -u +%m-%d\ %H:%M)Z)${nl}"
+state+="  총 스테이킹   $(xp $staked) XP  (캡 $(xp $cap) · ${util}%)${nl}"
+state+="  인출 대기     $(xp $predeem) XP${nl}"
+state+="  이자 대기     $(xp $reserves) XP  ← 미청구 보상${nl}"
+state+="  볼트 보유     $(xp $held) XP  (여유 $(xp $free))${nl}"
+state+="  정산 대기     $(xp $pend) XP  → 다음 정산 ${till}${nl}"
+state+="  누적 소각     $(xp $burned) XP"
+if [ -n "${COLLECTOR_PK:-}" ]; then
+  state+="${nl}  수령지갑      $(xp ${cb:-0}) XP"
+fi
+
 if [ -n "$alerts" ]; then
   echo "$alerts"
-  notify "[XP Vault]${nl}${alerts}"
+  notify "[XP Vault]${nl}${alerts}${nl}${state}"
   exit 1
 fi
 echo "[$(date -u +%FT%TZ)] ok"
+echo "$state"
+# 하루 한 번(09:00 UTC 근처) 이상 없어도 현황을 남긴다. 조용한 것과
+# 죽은 것을 구분할 수 없으면 감시가 아니다.
+if [ "${MONITOR_DIGEST:-1}" = "1" ] && [ "$(date -u +%H)" = "09" ] && [ "$(date -u +%M)" -lt 30 ]; then
+  notify "[XP Vault] 일일 현황${nl}${state}"
+fi

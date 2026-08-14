@@ -182,7 +182,14 @@ if [ "$OK" = "true" ]; then
     BURNED=$(python3 -c "print(($B1-$B0)/1e18)")
     DISTED=$(python3 -c "print(($D1-$D0)/1e18)")
     log "settled. burned=+$BURNED distributed=+$DISTED (lifetime burned $(cast to-unit $B1 ether) XP)"
-    notify "🔥 [XP Vault] 에폭 정산 완료${nl}정산액: $(cast to-unit $PEND ether) XP${nl}→ 소각: $BURNED XP · 스테이커: $DISTED XP${nl}누적 소각: $(cast to-unit $B1 ether) XP"
+    # 정산 결과만 보내면 "그래서 지금 총 얼마인데"를 매번 따로 조회하게 된다.
+    S_TVL=$(cast call "$VAULT" "totalAssets()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
+    S_CAP=$(cast call "$VAULT" "stakeCap()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
+    S_PR=$(cast call "$VAULT" "totalPendingRedeem()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
+    S_RR=$(cast call "$VAULT" "rewardReserves()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
+    S_APR=$(python3 -c "print(f'{$PEND*${DIST_RATIO_BPS:-6000}/10000*365/max($S_TVL,$S_CAP)*100:.2f}')")
+    x(){ cast to-unit "${1:-0}" ether | awk '{printf "%\047.2f", $1}'; }
+    notify "🔥 [XP Vault] 에폭 정산 완료${nl}정산액: $(x $PEND) XP${nl}→ 소각: $BURNED XP · 스테이커: $DISTED XP${nl}누적 소각: $(x $B1) XP${nl}${nl}📊 정산 후 현황${nl}  총 스테이킹  $(x $S_TVL) XP  (캡 $(x $S_CAP))${nl}  인출 대기    $(x $S_PR) XP${nl}  이자 대기    $(x $S_RR) XP${nl}  이번 정산 기준 APR  ${S_APR}%"
     ./record-stats.sh || log "record-stats failed (non-fatal)"
   else
     log "settle FAILED"

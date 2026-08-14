@@ -245,7 +245,42 @@ LINE = {
 }
 
 
-def describe(ev, ts):
+# Verified with `cast sig` — a wrong selector reads as zero, not as an error,
+# so a totals block would quietly show 0 XP instead of failing.
+SEL_TOTAL_ASSETS = "0x01e1d114"  # totalAssets()
+SEL_STAKE_CAP = "0xba28fd2e"  # stakeCap()
+SEL_PENDING_REDEEM = "0x25bb3361"  # totalPendingRedeem()
+SEL_REWARD_RESERVES = "0xf0de8228"  # rewardReserves()
+
+
+def vault_state():
+    """Totals worth carrying on every alert. Returns None if a read fails —
+    an alert without the summary still beats no alert."""
+    try:
+        g = lambda sel: int(call(VAULT, sel) or "0x0", 16)
+        return {
+            "tvl": g(SEL_TOTAL_ASSETS),
+            "cap": g(SEL_STAKE_CAP),
+            "pendingRedeem": g(SEL_PENDING_REDEEM),
+            "reserves": g(SEL_REWARD_RESERVES),
+        }
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def state_block(s):
+    if not s:
+        return ""
+    pct = f" ({s['tvl'] / s['cap'] * 100:.2f}%)" if s["cap"] else ""
+    return (
+        "\n📊 현황"
+        f"\n  총 스테이킹  {fmt(s['tvl'], 2)} XP{pct}"
+        f"\n  인출 대기    {fmt(s['pendingRedeem'], 2)} XP"
+        f"\n  이자 대기    {fmt(s['reserves'], 2)} XP"
+    )
+
+
+def describe(ev, ts, state=None):
     icon, label = LINE[ev["kind"]]
     lines = [f"{icon} [XP Vault] {label}", f"지갑: `{ev['who']}`", f"수량: {fmt(ev['assets'])} XP"]
     if ev.get("partner"):
@@ -258,7 +293,7 @@ def describe(ev, ts):
         except Exception:  # noqa: BLE001 — a failed read must not drop the alert
             pass
     lines.append(f"{kst(ts)} KST · 블록 {ev['block']}")
-    return "\n".join(lines)
+    return "\n".join(lines) + state_block(state)
 
 
 # ── commands ────────────────────────────────────────────────────────────────
@@ -303,8 +338,10 @@ def cmd_watch(argv):
             append_ledger(chunk)
             seen += len(chunk)
             if not quiet:
+                # One read per batch, shared by every alert in it.
+                st = vault_state()
                 for ev in chunk:
-                    notify(describe(ev, ev["ts"]))
+                    notify(describe(ev, ev["ts"], st))
         write_checkpoint(end)
         cur = end + 1
         time.sleep(0.15)
