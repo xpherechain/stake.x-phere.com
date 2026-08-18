@@ -23,7 +23,10 @@
     const [R, RDC, Z] = await Promise.all([
       import("https://esm.sh/react@19.0.0"),
       import("https://esm.sh/react-dom@19.0.0/client"),
-      import("https://esm.sh/zigap-utils@3.1.0?deps=react@19.0.0,react-dom@19.0.0"),
+      // Pinned exactly: the library renders with its own jsx-runtime, and a
+      // React it did not expect throws #31 inside the modal. `deps` forces
+      // esm.sh to resolve it against the same React loaded above.
+      import("https://esm.sh/zigap-utils@3.1.1?deps=react@19.0.0,react-dom@19.0.0"),
     ]);
     libs = { React: R.default ?? R, createRoot: RDC.createRoot, Z };
     return libs;
