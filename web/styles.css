@@ -312,6 +312,29 @@ section {
   color: var(--ember-2);
 }
 
+/* full state — the band shifts from invitation to notice. Crimson edge,
+   dot goes solid, and the round label gives way to the number. */
+.eb-round.is-full { border: 1px solid rgba(231, 69, 58, .55); }
+.eb-round.is-full em { color: var(--ember); }
+
+/* capacity meter reads as spent rather than progressing once it is full */
+.capnotice.is-full .cn-bar { background: rgba(231, 69, 58, .14); }
+.capnotice.is-full .cn-left { color: var(--ember-2); }
+.capnotice.is-full .cn-tag::before {
+  content: "";
+  display: inline-block;
+  width: 6px; height: 6px;
+  margin-right: .4rem;
+  border-radius: 50%;
+  background: var(--ember);
+  vertical-align: middle;
+  animation: capPulse 2.2s ease-in-out infinite;
+}
+@keyframes capPulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) {
+  .capnotice.is-full .cn-tag::before { animation: none; }
+}
+
 .eb-cta {
   display: inline-flex;
   align-items: center;

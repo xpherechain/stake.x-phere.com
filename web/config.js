@@ -32,25 +32,19 @@ window.XP_CONFIG = {
   // Feature flags. zigap: QR-wallet connect via the ZIGAP app.
   features: { zigap: true },
 
-  // Round-one cap is filling. Warn while there is still room, and say when
-  // the next tranche lands once there is none — a deposit that reverts with
-  // no explanation is the worst version of this moment.
-  // `at` is the timelock's executable time; clear the block once it is raised.
-  // Timelock puts the raise at 2026-08-14 09:19:32 UTC; 09:20 is the first
-  // clean minute after it. Both zones are spelled out — the audience is split
-  // between them and "18:20" alone has been misread before.
-  // Rollout is communicated in rounds. The on-chain cap is raised in one step
-  // and stays the real limit — this is only the target the current round is
-  // working towards, so progress reads against something reachable instead of
-  // a number the vault will not approach for months.
-  // Deposits are never blocked by this; only the on-chain cap can do that.
-  // Bump `label`/`target` when a round is met.
-  // Rounds cleared so far: 1 at 2M, 2 at 5M, 3 at 10M.
+  // Capacity display. The on-chain cap is the only thing that can reject a
+  // deposit, so progress is measured against it rather than a marketing
+  // target — at 100% the two must not disagree.
+  //
+  // The cap is deliberately held at 35M through the event; nothing here
+  // should imply an imminent raise. What does free up is maturing unstake
+  // requests, and that is a fact with a date, so it is worth saying.
   round: {
     enabled: true,
     label: "Round 4",
-    target: 20_000_000,
-    openedLabel: "Rounds 1–3 filled — Round 4 is live",
+    nearFullPct: 99, // switch to the urgent state past this fill level
+    fullNote: "Deposits already made keep earning — nothing changes for them.",
+    reopenNote: "Capacity frees up as unstaking requests mature, the next batch on Aug 22.",
   },
 
   // Where someone with no XP goes to get some. Leave `url` empty to drop the
@@ -63,9 +57,10 @@ window.XP_CONFIG = {
   // Partner slugs shown on the leaderboard. partnerId = keccak256(slug).
   partners: ["ankr", "nansen"],
 
-  // Current stake cap (guarded launch), in whole XP. Raise to 35_000_000
-  // together with the on-chain setStakeCap at full open.
-  stakeCapXP: 2_000_000,
+  // Must track the on-chain stakeCap. It labels every static "of N cap"
+  // mention on the page, so a stale value here contradicts the live figure
+  // sitting next to it.
+  stakeCapXP: 35_000_000,
 
   // Temporary top band. Shown only between startsAt and endsAt, so it appears
   // and disappears on its own — no deploy needed at either end. Times are UTC;

@@ -413,53 +413,57 @@
   // Round-one capacity. Two states: still room but nearly gone, and gone.
   // Both read from the chain, so this clears itself the moment the cap is
   // raised — no deploy needed to take it down.
-  // Progress against the round target, plus a hard stop if the on-chain cap
-  // itself is exhausted. The two are different things and must not be blurred:
-  // hitting the round target is a milestone and deposits continue, hitting the
-  // cap actually rejects them.
+  // Capacity, measured against the on-chain cap — the only number that can
+  // actually reject a deposit. Progress against a marketing target would read
+  // "open" while the vault turns people away, which is the one failure this
+  // display exists to prevent.
+  //
+  // Three states, because the middle one matters: there is a window where the
+  // remaining room is real but too small for most deposits, and saying either
+  // "open" or "full" there would be wrong. It shows the exact figure instead
+  // and lets the depositor judge.
   function renderCapNotice(tvl, cap) {
     const el = $("#capNotice");
     const r = CFG.round;
     if (!el || !r || !r.enabled || !(cap > 0)) return;
 
-    // A cap is "gone" before it is mathematically zero — a fraction of an XP
-    // left rejects every realistic deposit, so treat that as closed rather
-    // than advertising room nobody can use.
-    const capLeft = Math.max(0, cap - tvl);
-    const capFull = capLeft < 1;
+    const left = Math.max(0, cap - tvl);
+    const pct = Math.min(100, (tvl / cap) * 100);
+    const full = left <= 0;
+    const nearFull = pct >= (r.nearFullPct ?? 99);
+    const capTxt = cap.toLocaleString("en-US", { maximumFractionDigits: 0 });
+    const leftTxt = left.toLocaleString("en-US", { maximumFractionDigits: left < 1000 ? 2 : 0 });
 
-    const target = r.target || cap;
-    const pct = Math.min(100, (tvl / target) * 100);
-    const left = Math.max(0, target - tvl);
-    const hit = left < 1;
-
-    // Round banner, visible without scrolling.
+    // Band under the nav, seen without scrolling.
     const rb = $("#ebRound");
     if (rb) {
-      rb.querySelector("strong").textContent = capFull
-        ? "Round paused — cap reached"
-        : r.openedLabel || `${r.label} is live`;
-      rb.querySelector("em").textContent = capFull
-        ? "NEW CAPACITY OPENING SHORTLY"
-        : `${r.label.toUpperCase()} TARGET — ${(target / 1_000_000).toFixed(0)}M XP`;
+      rb.classList.toggle("is-full", full || nearFull);
+      rb.querySelector("strong").textContent = full
+        ? `Vault full — all ${capTxt} XP staked`
+        : nearFull
+          ? `Almost full — ${leftTxt} XP left`
+          : `${r.label} is live`;
+      rb.querySelector("em").textContent = full || nearFull
+        ? `${pct.toFixed(2)}% OF ${capTxt} XP`
+        : `${r.label.toUpperCase()} · ${pct.toFixed(1)}% OF ${capTxt} XP`;
       rb.hidden = false;
     }
 
-    el.classList.toggle("is-full", capFull || hit);
-    el.querySelector(".cn-tag").textContent = capFull
-      ? "Deposits paused — cap reached"
-      : hit
-        ? `${r.label} target reached`
+    el.classList.toggle("is-full", full || nearFull);
+    el.querySelector(".cn-tag").textContent = full
+      ? "Vault full"
+      : nearFull
+        ? "Almost full"
         : `${r.label} in progress`;
-    el.querySelector(".cn-left").textContent = capFull
+    el.querySelector(".cn-left").textContent = full
       ? "0 XP left"
-      : `${Math.floor(tvl).toLocaleString("en-US")} / ${target.toLocaleString("en-US")} XP`;
+      : `${leftTxt} XP left`;
     el.querySelector(".cn-bar i").style.width = pct + "%";
-    el.querySelector(".cn-sub").textContent = capFull
-      ? "The on-chain cap is full. Deposits already made keep earning — nothing changes for them."
-      : hit
-        ? `${r.label} target met. Staking stays open — the next round is already running.`
-        : `${pct.toFixed(1)}% of the ${r.label} target · staking is open now`;
+
+    const staked = `${tvl.toLocaleString("en-US", { maximumFractionDigits: 0 })} of ${capTxt} XP staked (${pct.toFixed(2)}%).`;
+    el.querySelector(".cn-sub").textContent = full || nearFull
+      ? `${staked} ${r.fullNote || ""} ${r.reopenNote || ""}`.replace(/\s+/g, " ").trim()
+      : `${staked} Staking is open now.`;
     el.hidden = false;
   }
 

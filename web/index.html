@@ -46,7 +46,7 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     />
-    <link rel="stylesheet" href="styles.css?v=23" />
+    <link rel="stylesheet" href="styles.css?v=24" />
 
     <!-- Structured data. Keep the FAQ answers in sync with the #faq section below:
          Google penalises FAQPage markup that does not appear on the page. -->
@@ -135,7 +135,7 @@
                 "name": "What is the current cap?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "The vault opened in a guarded launch with a 2M XP cap — a deliberately conservative start. The cap is raised in steps via the on-chain timelock (48-hour public delay) as the rollout progresses, so every change is visible on-chain two days before it takes effect."
+                  "text": "The vault opened in a guarded launch at 2M XP and has been raised in steps to 35M XP. Every change goes through the on-chain timelock with a 48-hour public delay, so it is visible on-chain two days before it takes effect."
                 }
               },
               {
@@ -535,10 +535,9 @@
       <details>
         <summary>What is the current cap?</summary>
         <p>
-          The vault opened in a guarded launch with a <b><span data-cap>2M</span> XP</b> cap — a
-          deliberately conservative start. The cap is raised in steps via the on-chain timelock
-          (48-hour public delay) as the rollout progresses, so every change is visible on-chain
-          two days before it takes effect.
+          The vault opened in a guarded launch at 2M XP and has been raised in steps to
+          <b><span data-cap>35M</span> XP</b>. Every change goes through the on-chain timelock
+          with a 48-hour public delay, so it is visible on-chain two days before it takes effect.
         </p>
       </details>
       <details>
@@ -573,11 +572,11 @@
       // The public site (no query param) always loads the default config.js.
       (function () {
         var pick = new URLSearchParams(location.search).get("config");
-        var src = pick === "testnet" ? "config.testnet.js" : "config.js?v=13";
+        var src = pick === "testnet" ? "config.testnet.js" : "config.js?v=14";
         document.write('<script src="' + src + '"><\/script>');
       })();
     </script>
     <script src="zigap.js?v=5"></script>
-    <script src="app.js?v=38"></script>
+    <script src="app.js?v=39"></script>
   </body>
 </html>
