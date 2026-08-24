@@ -379,6 +379,43 @@
   //
   // The contract is immutable, so this lives here. status.html still shows the
   // raw on-chain figure beside it.
+  // Settlement history, used to average the APR. Loaded once; a failure just
+  // leaves the figure on the single-settlement path.
+  let settleHistory = null;
+  async function loadSettleHistory() {
+    try {
+      const res = await fetch("data/stats.json", { cache: "no-store" });
+      const days = (await res.json()).days || [];
+      settleHistory = days.map((d) => Number(d.settled)).filter((n) => isFinite(n) && n > 0);
+    } catch {
+      settleHistory = [];
+    }
+  }
+
+  // Daily input averaged over recent settlements.
+  //
+  // One settlement is a poor estimate of what a depositor earns. The union
+  // validator takes its slot round-robin, so a day lands anywhere from 32 to
+  // 59 minutes of minting — 18,875 XP one day and 34,800 the next. Annualising
+  // either one puts the rate between 11.8% and 21.8% for a vault whose actual
+  // yield never moved.
+  //
+  // Entries far below the median are dropped rather than averaged in. The
+  // sweep changed on Aug 14 from a 1,450/day budget to the full node revenue,
+  // and those old settlements are a different regime, not a bad week — mixing
+  // them in drags a 14-day average below the 1-day figure it is meant to
+  // steady.
+  function averageSettlement(fallback) {
+    const h = settleHistory;
+    if (!h || h.length < 3) return fallback;
+    const window = h.slice(-7);
+    const sorted = [...window].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    const kept = window.filter((n) => n >= median * 0.4);
+    if (kept.length < 3) return fallback;
+    return kept.reduce((a, b) => a + b, 0) / kept.length;
+  }
+
   function displayApr({ apr, lastS, ratioBps, epochS, tvl, cap, pending, E }) {
     const onchain = Number(apr) / 1e18;
     try {
@@ -386,17 +423,14 @@
       const split = Number(ratioBps) / 10000;
       const epoch = Number(epochS) || 86400;
       const denom = Math.max(Number(E.formatEther(tvl)), Number(E.formatEther(cap)));
-      let amount = Number(E.formatEther(lastS.totalAmount));
+      const last = Number(E.formatEther(lastS.totalAmount));
 
-      // How much goes in each day can change between settlements — the switch
-      // to sweeping the full node revenue multiplied it fourteen-fold. Until
-      // the next settlement lands, the last one describes the old regime and
-      // understates what a depositor now earns.
-      //
-      // What has actually accumulated this epoch is the better evidence, so
-      // project it to a full epoch and take whichever is larger. An hour of
-      // accumulation is required first: earlier than that the extrapolation
-      // swings wildly on a few blocks.
+      let amount = averageSettlement(last);
+
+      // Right after the daily input changes, history still describes the old
+      // regime. What has accumulated this epoch is the fresher evidence, so
+      // take it when it is larger. An hour has to pass first — before that the
+      // extrapolation swings on a handful of blocks.
       const elapsed = Date.now() / 1000 - Number(lastS.settledAt);
       if (pending != null && elapsed > 3600) {
         const projected = (Number(E.formatEther(pending)) / elapsed) * epoch;
@@ -410,9 +444,6 @@
     }
   }
 
-  // Round-one capacity. Two states: still room but nearly gone, and gone.
-  // Both read from the chain, so this clears itself the moment the cap is
-  // raised — no deploy needed to take it down.
   // Capacity, measured against the on-chain cap — the only number that can
   // actually reject a deposit. Progress against a marketing target would read
   // "open" while the vault turns people away, which is the one failure this
@@ -1178,6 +1209,8 @@
   }
 
   function init() {
+    // History feeds the averaged APR; the dashboard refreshes after it lands.
+    loadSettleHistory().then(loadDashboard);
     renderBanner();
     wireBuyXp();
     wireReveal();
