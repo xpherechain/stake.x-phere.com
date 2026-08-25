@@ -61,20 +61,43 @@ if [ -n "${COLLECTOR_PK:-}" ]; then
   COLLECTOR=$(cast wallet address --private-key "$COLLECTOR_PK")
   BAL=$(cast balance "$COLLECTOR" --rpc-url "$RPC")
 
-  # 1a) 유니온 노드 입금 감지.
-  #     수령지갑에는 노드 보상 외 유입이 없으므로, 직전 실행이 끝난 시점의
-  #     잔고와 지금 잔고의 차이가 그 사이 들어온 노드 보상이다. 스윕이
-  #     잔고를 비우기 전에 읽어야 하므로 반드시 이 위치여야 한다.
+  # 1a) 유니온 노드 입금.
+  #     보상은 검증인 순번이 돌아올 때마다 589 XP씩 들어오므로, 유입 건마다
+  #     알리면 하루 백 건을 넘는다. 그 빈도에서는 아무도 읽지 않고, 정작
+  #     읽어야 할 실패 알림이 그 사이에 묻힌다.
+  #
+  #     대신 누적만 해두고 하루 한 번 합계로 보고한다. 개별 유입은 정상
+  #     동작이라 알릴 가치가 없고, 이상 신호는 "들어와야 할 게 안 들어온
+  #     것"인데 그건 합계로만 보인다.
   mkdir -p ./state
   LAST_BAL_FILE=./state/collector-balance.txt
+  ACC_FILE=./state/inflow-accum.txt
+  ACC_DAY_FILE=./state/inflow-day.txt
   if [ -f "$LAST_BAL_FILE" ]; then
     LAST_BAL=$(cat "$LAST_BAL_FILE")
     INFLOW=$(python3 -c "print(max(0, $BAL - $LAST_BAL))")
-    if python3 -c "exit(0 if int('$INFLOW') >= int('${DEPOSIT_ALERT_WEI:-100000000000000000000}') else 1)"; then
-      log "node deposit +$(cast to-unit $INFLOW ether) XP"
-      notify "🟢 [XP Vault] 유니온 노드 보상 입금${nl}수량: $(cast to-unit $INFLOW ether) XP${nl}수령지갑 잔고: $(cast to-unit $BAL ether) XP"
+    if python3 -c "exit(0 if int('$INFLOW') > 0 else 1)"; then
+      ACC=$(cat "$ACC_FILE" 2>/dev/null || echo 0)
+      python3 -c "print($ACC + $INFLOW)" > "$ACC_FILE"
+      log "node deposit +$(cast to-unit $INFLOW ether) XP (누적 $(cast to-unit $(cat $ACC_FILE) ether))"
     fi
+
+    # 하루 한 번 합계 보고. 날짜가 바뀐 첫 실행에서만 나가므로 정확히 1건이다.
+    TODAY=$(date -u +%F)
+    if [ "$(cat "$ACC_DAY_FILE" 2>/dev/null)" != "$TODAY" ]; then
+      ACC=$(cat "$ACC_FILE" 2>/dev/null || echo 0)
+      if python3 -c "exit(0 if int('$ACC') >= int('${DEPOSIT_ALERT_WEI:-1000000000000000000000}') else 1)"; then
+        notify "🟢 [XP Vault] 노드 보상 24시간 누적${nl}수량: $(cast to-unit $ACC ether) XP${nl}수령지갑 잔고: $(cast to-unit $BAL ether) XP"
+      fi
+      echo "$TODAY" > "$ACC_DAY_FILE"
+      echo 0 > "$ACC_FILE"
+    fi
+  else
+    # 첫 실행: 기준점만 잡고 알리지 않는다.
+    date -u +%F > "$ACC_DAY_FILE"
+    echo 0 > "$ACC_FILE"
   fi
+
   SWEEP=$(python3 -c "print(max(0, $BAL - ${GAS_RESERVE_WEI:-0}))")
   # PEND_NOW is only meaningful in partial-sweep mode, but the log line below
   # reads it either way — under `set -u` an unset one kills the script right
