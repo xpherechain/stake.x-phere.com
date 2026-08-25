@@ -141,7 +141,15 @@ def xp(wei):
 
 
 def fmt(wei, dp=4):
-    return f"{xp(wei):,.{dp}f}"
+    """Fixed decimals, except when that would round a real amount to zero.
+
+    Reward claims from dust stakes land in the 1e-5 range, and printing those
+    as "0.0000 XP" reads as a broken alert rather than a small one. Below the
+    chosen precision, show enough digits for the figure to survive."""
+    v = xp(wei)
+    if v != 0 and abs(v) < 10 ** -dp:
+        return f"{v:,.10f}".rstrip("0")
+    return f"{v:,.{dp}f}"
 
 
 def kst(ts):
