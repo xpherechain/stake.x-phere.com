@@ -15,7 +15,7 @@ contract PartnerCommissionTest is BaseTest {
 
     function setUp() public override {
         super.setUp();
-        vm.prank(admin);
+        // admin is a constructor argument, so the deployment is not pranked.
         commission = new PartnerCommissionDistributor(IPartnerTVL(address(vault)), admin);
         vm.prank(admin);
         commission.registerPartner(ANKR, ankrAdmin, ankrPayout);

@@ -13,7 +13,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pinned so a red CI means our code broke, not that foundry shipped a
+      # release overnight. The 1.8.0 build tightened vm.prank and turned two
+      # suites red here without a commit of ours; settle.yml was taken out the
+      # same week by the same unpinned action.
+      #
+      # The suite passes on 1.8.0 as well, so this can be raised whenever —
+      # just run the tests against the new build before doing it.
       - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.4.4
 
       - name: forge build
         run: forge build --sizes

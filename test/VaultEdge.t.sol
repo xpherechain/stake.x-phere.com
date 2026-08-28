@@ -108,8 +108,8 @@ contract VaultEdgeTest is BaseTest {
     // --- sweep guard ---
 
     function test_SweepRevertsWhenDistributorUnset() public {
-        // fresh vault without setDistributor
-        vm.prank(admin);
+        // fresh vault without setDistributor. The constructor takes admin as
+        // an argument, so deploying does not need to be pranked.
         XPStakingVault v2 = _freshVaultNoDistributor();
         vm.prank(admin);
         vm.expectRevert(XPStakingVault.DistributorNotSet.selector);
