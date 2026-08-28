@@ -31,7 +31,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # Pinned deliberately. The action installs the newest foundry by
+      # default, and the 2026-08-26 build probes the endpoint to classify the
+      # network family — a method this RPC rejects with -32053, so `cast`
+      # aborts before running anything. Settlement stopped for a day on a
+      # release nobody here made.
+      #
+      # Raise this only after checking the new build against the RPC.
       - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.4.4
 
       # Settling and publishing are separate failures. The keeper can keep
       # settling on-chain while its `git push` quietly fails, which leaves the
