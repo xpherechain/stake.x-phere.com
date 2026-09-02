@@ -15,14 +15,7 @@ PATH=/usr/local/bin:/usr/bin:/bin:/home/xpops/.foundry/bin
 # 30분마다 — 상태 점검 + 알림
 */30 * * * *  /opt/xp-vault/ops/monitor.sh      >> /var/log/xp-vault/monitor.log 2>&1
 
-# ── 이벤트 캠페인 (기간 중에만 등록, 끝나면 지울 것) ──────────────
-# 5분마다 — 예치/언스테이크/보상수령을 건별로 슬랙에 알린다.
+# 5분마다 — 예치/언스테이크 요청/언스테이크 수령/보상 수령을 건별로 슬랙에 알린다.
 #   읽기 전용이고 개인키를 쓰지 않아 정산과 완전히 분리돼 있다.
-*/5 * * * *   /opt/xp-vault/ops/event-report.sh watch    >> /var/log/xp-vault/event.log 2>&1
-
-# 매일 10:00 KST(01:00 UTC) — 팀이 볼 데일리 리포트.
-0 1 * * *     /opt/xp-vault/ops/event-report.sh report   >> /var/log/xp-vault/event.log 2>&1
-
-# 8/26 00:10 KST(8/25 15:10 UTC) — 종료 직후 최종 스냅샷 + CSV.
-#   마감(8/25 24:00 KST) 전에는 스스로 거부하므로 일찍 돌아도 안전하다.
-10 15 25 8 *  /opt/xp-vault/ops/event-report.sh snapshot >> /var/log/xp-vault/event.log 2>&1
+#   (예치왕 이벤트용 report/snapshot 잡은 이벤트 종료와 함께 제거했다.)
+*/5 * * * *   /opt/xp-vault/ops/vault-activity.sh    >> /var/log/xp-vault/activity.log 2>&1

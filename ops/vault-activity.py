@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Event-campaign watcher and reporter for the XP Union Vault.
+"""Vault activity watcher for the XP Union Vault.
 
-Three jobs, one file:
+Scans new blocks, posts one Slack line per vault event — deposit, unstake
+request, unstake claim, reward claim — and appends the ledger those alerts are
+derived from.
 
-  watch     scan new blocks, post one Slack line per vault event, append the
-            ledger that everything else is derived from
-  report    daily digest for the team while the campaign runs
-  snapshot  final list of stakers and balances at the campaign deadline,
-            written as CSV for the manual reward selection
+This started as tooling for the 예치왕 campaign (2026-08-12 ~ 08-25) and also
+carried a daily campaign digest and a deadline snapshot. The campaign is over
+and both were removed; what remains is the ordinary activity feed, which is
+worth running indefinitely. The ledger and checkpoint keep their `event-`
+filenames so the existing history and scan position survive the rename.
 
 Pure stdlib on purpose. The keeper already lost a night to `cast` missing from
 cron's PATH, so nothing here shells out — it speaks JSON-RPC over urllib.
@@ -15,7 +17,6 @@ cron's PATH, so nothing here shells out — it speaks JSON-RPC over urllib.
 Read-only: no private key is used or needed.
 """
 
-import csv
 import json
 import os
 import sys
@@ -28,7 +29,6 @@ KST = timezone(timedelta(hours=9))
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATE_DIR = os.path.join(HERE, "state")
-OUT_DIR = os.path.join(HERE, "out")
 LEDGER = os.path.join(STATE_DIR, "event-ledger.jsonl")
 CHECKPOINT = os.path.join(STATE_DIR, "event-checkpoint.json")
 
@@ -36,9 +36,6 @@ RPC = os.environ.get("RPC", "https://rpc.ankr.com/xphere_mainnet")
 VAULT = (os.environ.get("VAULT") or "").lower()
 SLACK = os.environ.get("SLACK_WEBHOOK", "")
 
-# Campaign window, KST in the booking, UTC here.
-EVENT_START = int(os.environ.get("EVENT_START", "1786518000"))  # 8/12 16:00 KST
-EVENT_END = int(os.environ.get("EVENT_END", "1787670000"))  # 8/25 24:00 KST
 
 # Precomputed so the server needs no keccak implementation.
 TOPIC = {
@@ -55,10 +52,7 @@ PARTNER_NAME = {
     "0xfb59ab348c9b985b58c338de98118b538ac0cdc9cce2ca7e05e581e6ccfda190": "직접유입",
     "0x" + "0" * 64: "(미귀속)",
 }
-DIRECT = "0xfb59ab348c9b985b58c338de98118b538ac0cdc9cce2ca7e05e581e6ccfda190"
-
 SEL_BALANCE_OF = "0x70a08231"
-SEL_USER_PARTNER = "0xf90a0de7"
 
 MAX_SPAN = 1000  # the public RPC rejects wider getLogs ranges
 SHARE_UNIT = 1000  # 1 XP == 1000 shares, fixed in the contract
@@ -94,16 +88,16 @@ def block_time(n):
 
 
 def block_at_time(target, lo=None, hi=None):
-    """First block at or after `target`. Xphere is ~1s/block but never assume."""
-    hi = hi if hi is not None else block_number()
-    lo = lo if lo is not None else max(1, hi - 3_000_000)
-    while hi - lo > 1:
+    """First block at or after `target` (unix seconds), by bisection."""
+    hi = block_number() if hi is None else hi
+    lo = 0 if lo is None else lo
+    while lo < hi:
         mid = (lo + hi) // 2
         if block_time(mid) < target:
-            lo = mid
+            lo = mid + 1
         else:
             hi = mid
-    return hi
+    return lo
 
 
 def call(to, data, block="latest"):
@@ -117,10 +111,6 @@ def addr_arg(a):
 
 def balance_of(who, block="latest"):
     return int(call(VAULT, SEL_BALANCE_OF + addr_arg(who), block) or "0x0", 16)
-
-
-def user_partner(who, block="latest"):
-    return "0x" + (call(VAULT, SEL_USER_PARTNER + addr_arg(who), block) or "0x0")[2:].rjust(64, "0")
 
 
 def notify(text):
@@ -156,25 +146,8 @@ def kst(ts):
     return datetime.fromtimestamp(ts, KST).strftime("%m-%d %H:%M")
 
 
-def short(a):
-    return a[:6] + "…" + a[-4:]
-
-
 def pname(pid):
     return PARTNER_NAME.get(pid, pid[:10] + "…")
-
-
-# ── ledger ──────────────────────────────────────────────────────────────────
-def load_ledger():
-    if not os.path.exists(LEDGER):
-        return []
-    rows = []
-    with open(LEDGER, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                rows.append(json.loads(line))
-    return rows
 
 
 def append_ledger(rows):
@@ -314,7 +287,16 @@ def cmd_watch(argv):
     # re-defaulted to the current head, so the file never appeared and no block
     # was ever scanned — the watcher stayed silent forever.
     if not os.path.exists(CHECKPOINT):
-        anchor = block_at_time(EVENT_START) - 1 if "--from-event" in argv else head
+        # Default to the head: a fresh install alerts on what happens next, not
+        # on months of history. Backfill after losing state/ with one of:
+        #   --from-block=N   exact block
+        #   --from-days=N    N days back, resolved by bisection
+        anchor = head
+        for a in argv:
+            if a.startswith("--from-block="):
+                anchor = int(a.split("=", 1)[1]) - 1
+            elif a.startswith("--from-days="):
+                anchor = block_at_time(int(time.time()) - 86400 * int(a.split("=", 1)[1])) - 1
         write_checkpoint(anchor)
         print(f"checkpoint initialised at {anchor}")
 
@@ -357,155 +339,12 @@ def cmd_watch(argv):
     print(f"scanned {frm}..{head}, {seen} event(s)")
 
 
-def in_window(ev):
-    return EVENT_START <= ev["ts"] < EVENT_END
-
-
-def participants(rows):
-    """Per-address campaign activity, in first-deposit order."""
-    agg = {}
-    for ev in rows:
-        if ev["kind"] != "deposit" or not in_window(ev):
-            continue
-        a = agg.setdefault(
-            ev["who"], {"deposited": 0, "count": 0, "first_ts": ev["ts"], "first_block": ev["block"], "partner": ev.get("partner")}
-        )
-        a["deposited"] += ev["assets"]
-        a["count"] += 1
-        if ev["ts"] < a["first_ts"]:
-            a["first_ts"], a["first_block"] = ev["ts"], ev["block"]
-    return dict(sorted(agg.items(), key=lambda kv: kv[1]["first_ts"]))
-
-
-def cmd_report(argv):
-    rows = [r for r in load_ledger() if in_window(r)]
-    now = int(time.time())
-    day = max(0, (now - EVENT_START) // 86400 + 1)
-    total_days = (EVENT_END - EVENT_START) // 86400
-
-    since = now - 86400
-    today = [r for r in rows if r["ts"] >= since]
-    parts = participants(rows)
-
-    dep_t = sum(r["assets"] for r in today if r["kind"] == "deposit")
-    unst_t = sum(r["assets"] for r in today if r["kind"] == "unstake_request")
-    new_t = len({r["who"] for r in today if r["kind"] == "deposit"} - {
-        r["who"] for r in rows if r["kind"] == "deposit" and r["ts"] < since
-    })
-
-    tvl = int(call(VAULT, "0x01e1d114"), 16)
-    dep_all = sum(v["deposited"] for v in parts.values())
-
-    by_partner = {}
-    for who, v in parts.items():
-        p = pname(v["partner"] or DIRECT)
-        b = by_partner.setdefault(p, {"n": 0, "xp": 0})
-        b["n"] += 1
-        b["xp"] += v["deposited"]
-
-    live = sorted(
-        ((w, balance_of(w) // SHARE_UNIT) for w in parts), key=lambda kv: kv[1], reverse=True
-    )
-
-    L = [
-        f"📊 [XP Vault] 이벤트 데일리 리포트 — D+{day}/{total_days}",
-        f"집계: {kst(now)} KST 기준",
-        f"기간: {kst(EVENT_START)} ~ {kst(EVENT_END)} KST",
-        "",
-        "■ 최근 24시간",
-        f"  신규 참여 지갑   {new_t}개",
-        f"  예치             +{fmt(dep_t, 2)} XP ({sum(1 for r in today if r['kind']=='deposit')}건)",
-        f"  언스테이크 요청   -{fmt(unst_t, 2)} XP ({sum(1 for r in today if r['kind']=='unstake_request')}건)",
-        f"  순증             {'+' if dep_t >= unst_t else ''}{fmt(dep_t - unst_t, 2)} XP",
-        "",
-        "■ 이벤트 누적",
-        f"  참여 지갑        {len(parts)}개",
-        f"  총 예치          {fmt(dep_all, 2)} XP",
-        f"  현재 볼트 TVL     {fmt(tvl, 2)} XP",
-        "",
-        "■ 파트너별 (예치 기준)",
-    ]
-    for p, b in sorted(by_partner.items(), key=lambda kv: kv[1]["xp"], reverse=True):
-        L.append(f"  {p:<10} {b['n']:>3}개   {fmt(b['xp'], 2):>14} XP")
-    L += ["", "■ 예치왕 TOP 5 (현재 잔액)"]
-    for i, (w, bal) in enumerate(live[:5], 1):
-        L.append(f"  {i}. {short(w)}  {fmt(bal, 2):>14} XP")
-    if now >= EVENT_END:
-        L += ["", "⏰ 이벤트가 종료됐습니다. 최종 스냅샷은 event-report.sh snapshot 으로 생성하십시오."]
-    notify("\n".join(L))
-
-
-def cmd_snapshot(argv):
-    """Balances at the campaign deadline — the file the reward selection uses."""
-    at = EVENT_END
-    for a in argv:
-        if a.startswith("--at="):
-            at = int(a.split("=", 1)[1])
-    if int(time.time()) < at:
-        print(f"deadline not reached yet ({kst(at)} KST) — refusing to snapshot early")
-        return
-
-    blk = block_at_time(at)
-    rows = load_ledger()
-    parts = participants(rows)
-    print(f"snapshot block {blk} ({kst(block_time(blk))} KST), {len(parts)} participant(s)")
-
-    out = []
-    for rank, (who, v) in enumerate(parts.items(), 1):
-        shares = balance_of(who, blk)
-        out.append(
-            {
-                "address": who,
-                "staked_xp_at_snapshot": f"{shares / SHARE_UNIT / 1e18:.6f}",
-                "shares_at_snapshot": str(shares),
-                "total_deposited_xp": f"{xp(v['deposited']):.6f}",
-                "deposit_count": v["count"],
-                "first_deposit_kst": datetime.fromtimestamp(v["first_ts"], KST).strftime("%Y-%m-%d %H:%M:%S"),
-                "first_deposit_block": v["first_block"],
-                "first_deposit_order": rank,
-                "partner": pname(v["partner"] or DIRECT),
-                "partner_id": v["partner"] or "",
-            }
-        )
-        time.sleep(0.1)
-
-    os.makedirs(OUT_DIR, exist_ok=True)
-    stamp = datetime.fromtimestamp(at, KST).strftime("%Y%m%d-%H%M")
-    path = os.path.join(OUT_DIR, f"event-snapshot-{stamp}.csv")
-    with open(path, "w", newline="", encoding="utf-8-sig") as f:  # BOM: Excel opens Korean cleanly
-        w = csv.DictWriter(f, fieldnames=list(out[0].keys()) if out else ["address"])
-        w.writeheader()
-        w.writerows(out)
-
-    held = sorted(out, key=lambda r: float(r["staked_xp_at_snapshot"]), reverse=True)
-    total_held = sum(float(r["staked_xp_at_snapshot"]) for r in out)
-    L = [
-        "🏁 [XP Vault] 이벤트 종료 — 최종 스냅샷",
-        f"기준 시각: {kst(at)} KST (블록 {blk})",
-        "",
-        f"참여 지갑        {len(out)}개",
-        f"스냅샷 시점 예치  {total_held:,.2f} XP",
-        f"기간 총 예치액    {sum(float(r['total_deposited_xp']) for r in out):,.2f} XP",
-        "",
-        "■ 예치왕 TOP 10 (스냅샷 시점 잔액)",
-    ]
-    for i, r in enumerate(held[:10], 1):
-        L.append(f"  {i:>2}. {short(r['address'])}  {float(r['staked_xp_at_snapshot']):>14,.2f} XP  [{r['partner']}]")
-    L += ["", "■ 선착순 TOP 10 (최초 예치 순)"]
-    for r in out[:10]:
-        L.append(f"  {r['first_deposit_order']:>2}. {short(r['address'])}  {r['first_deposit_kst']}  [{r['partner']}]")
-    L += ["", f"CSV: {path}", "※ 어뷰징 검토·대상자 선별은 수기로 진행됩니다."]
-    notify("\n".join(L))
-    print(f"\nwrote {path}")
-
-
 def main():
     if not VAULT:
         sys.exit("VAULT is not set — source ops/.env first")
-    cmds = {"watch": cmd_watch, "report": cmd_report, "snapshot": cmd_snapshot}
-    if len(sys.argv) < 2 or sys.argv[1] not in cmds:
-        sys.exit(f"usage: {sys.argv[0]} {{{'|'.join(cmds)}}} [options]")
-    cmds[sys.argv[1]](sys.argv[2:])
+    if len(sys.argv) < 2 or sys.argv[1] != "watch":
+        sys.exit(f"usage: {sys.argv[0]} watch [--quiet] [--from-block=N|--from-days=N]")
+    cmd_watch(sys.argv[2:])
 
 
 if __name__ == "__main__":
