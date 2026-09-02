@@ -672,18 +672,21 @@
       },
       label
     );
-    if (!res || res.status !== 1) {
-      throw new Error((res && res.error) || "Transaction failed in ZIGAP");
+    // The hash is the only thing here worth trusting. This used to gate on
+    // `res.status === 1`, but zigap-utils puts no constraint on that field for
+    // sendTransaction — the sibling payment flow types it as a string — so the
+    // comparison was an assumption about a number we never confirmed is a
+    // number. If the app sends "1", a transaction that really was broadcast
+    // gets reported as a failure, and the natural response to that is to press
+    // the button again and pay for another one.
+    //
+    // So: no hash means nothing was submitted. A hash means the chain decides.
+    const hash = res && (res.txHash || res.hash || res.transactionHash);
+    if (!hash) {
+      throw new Error((res && res.error) || "ZIGAP returned no transaction hash — nothing was submitted.");
     }
-    // res.status only says ZIGAP accepted and broadcast it. Returning here
-    // reported success before the transaction was mined, so the refresh that
-    // followed read pre-transaction state and the figures did not move —
-    // people read that as "nothing happened" and pressed the button again,
-    // paying gas for a claim that had already been emptied. Wait for the
-    // receipt, exactly as the injected-wallet path does with tx.wait().
-    const hash = res.txHash || res.hash || res.transactionHash;
-    const receipt = hash ? await waitForReceipt(hash) : null;
-    return { zigap: res, receipt };
+    const receipt = await waitForReceipt(hash);
+    return { zigap: res, receipt, hash };
   }
 
   // RewardClaimed(address indexed account, address indexed receiver,
