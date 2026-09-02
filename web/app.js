@@ -672,8 +672,81 @@
       },
       label
     );
-    if (res && res.status === 1) return res;
-    throw new Error((res && res.error) || "Transaction failed in ZIGAP");
+    if (!res || res.status !== 1) {
+      throw new Error((res && res.error) || "Transaction failed in ZIGAP");
+    }
+    // res.status only says ZIGAP accepted and broadcast it. Returning here
+    // reported success before the transaction was mined, so the refresh that
+    // followed read pre-transaction state and the figures did not move —
+    // people read that as "nothing happened" and pressed the button again,
+    // paying gas for a claim that had already been emptied. Wait for the
+    // receipt, exactly as the injected-wallet path does with tx.wait().
+    const hash = res.txHash || res.hash || res.transactionHash;
+    const receipt = hash ? await waitForReceipt(hash) : null;
+    return { zigap: res, receipt };
+  }
+
+  // RewardClaimed(address indexed account, address indexed receiver,
+  //                uint256 amount, bool native) — amount is the first word of data.
+  const TOPIC_REWARD_CLAIMED =
+    "0xc451967880ae6293c5a4c3ed397a45e0c39860af769a5370c769f86ceb320927";
+
+  /**
+   * Amount a claim actually paid, in wei. The contract emits the event even
+   * when there was nothing to pay, and that receipt still has status 1 — so a
+   * successful transaction and a payout are not the same thing, and the UI has
+   * to say which one happened.
+   */
+  function claimedAmount(receipt) {
+    for (const lg of (receipt && receipt.logs) || []) {
+      const t = lg.topics && lg.topics[0];
+      if (t && t.toLowerCase() === TOPIC_REWARD_CLAIMED) {
+        return BigInt(lg.data.slice(0, 66));
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Claim amounts are read, not skimmed, so no compacting and no rounding a
+   * real payout down to "0" — the same trap the Slack alerts hit.
+   */
+  function fmtClaim(wei) {
+    const exact = E.formatEther(wei);
+    const n = Number(exact);
+    if (n >= 0.0001) return n.toLocaleString("en-US", { maximumFractionDigits: 4 });
+    return exact.replace(/0+$/, "").replace(/\.$/, "");
+  }
+
+  function reportClaim(receipt) {
+    const amt = claimedAmount(receipt);
+    if (amt === null) {
+      setTx("Rewards claimed \u2713", "ok");
+    } else if (amt === 0n) {
+      setTx("Nothing to claim right now \u2014 rewards were already claimed.", "err");
+    } else {
+      setTx(`Claimed ${fmtClaim(amt)} XP \u2713`, "ok");
+    }
+    loadPosition();
+  }
+
+  /** Poll until the transaction is mined. Throws if it reverted. */
+  async function waitForReceipt(hash, timeoutMs = 180000) {
+    const started = Date.now();
+    for (;;) {
+      let r = null;
+      try {
+        r = await readProvider.send("eth_getTransactionReceipt", [hash]);
+      } catch (_) {}
+      if (r) {
+        if (BigInt(r.status ?? 0) !== 1n) throw new Error("Transaction reverted on-chain");
+        return r;
+      }
+      if (Date.now() - started > timeoutMs) {
+        throw new Error("Still pending after 3 minutes — check your wallet before retrying.");
+      }
+      await new Promise((ok) => setTimeout(ok, 2000));
+    }
   }
 
   // Wallet menu (connected state): copy / switch / disconnect.
@@ -742,6 +815,32 @@
   }
 
   // Primary CTAs reflect wallet connection state.
+  /**
+   * Bind a click handler that cannot run twice at once. The button is disabled
+   * for the whole round trip, including the ZIGAP QR scan, which can take a
+   * while and used to leave the button live the entire time.
+   */
+  function wireAction(sel, fn) {
+    const btn = $(sel);
+    if (!btn) return;
+    let busy = false;
+    btn.addEventListener("click", async () => {
+      if (busy) return;
+      busy = true;
+      const label = btn.textContent;
+      btn.disabled = true;
+      btn.setAttribute("aria-busy", "true");
+      try {
+        await fn();
+      } finally {
+        busy = false;
+        btn.disabled = false;
+        btn.removeAttribute("aria-busy");
+        btn.textContent = label;
+      }
+    });
+  }
+
   function refreshCtas() {
     const on = !!signer || walletMode === "zigap";
     const hero = $("#heroCta");
@@ -969,9 +1068,10 @@
     if (walletMode === "zigap") {
       try {
         setTx("Scan the QR with your ZIGAP app…", "pending");
-        await zigapVaultTx("claimRewardNative", [account], 0n, "Claim rewards", 500000);
-        setTx("Rewards claimed ✓", "ok");
-        loadPosition();
+        const { receipt } = await zigapVaultTx(
+          "claimRewardNative", [account], 0n, "Claim rewards", 500000
+        );
+        reportClaim(receipt);
       } catch (err) {
         setTx(err.message, "err");
       }
@@ -981,9 +1081,7 @@
     try {
       setTx("Confirm in your wallet…", "pending");
       const tx = await vault.claimRewardNative(account);
-      await tx.wait();
-      setTx("Rewards claimed ✓", "ok");
-      loadPosition();
+      reportClaim(await tx.wait());
     } catch (err) {
       setTx(err.shortMessage || err.message, "err");
     }
@@ -1239,10 +1337,12 @@
       if (menu) menu.hidden = !menu.hidden; // connected → toggle wallet menu
     });
     wireWalletMenu();
-    $("#depositBtn").addEventListener("click", doDeposit);
-    $("#requestBtn").addEventListener("click", doRequest);
-    $("#claimRedeemBtn").addEventListener("click", doClaimRedeem);
-    $("#claimBtn").addEventListener("click", doClaimReward);
+    // Guarded: every one of these sends a transaction, and a second press
+    // while the first is in flight costs gas for nothing.
+    wireAction("#depositBtn", doDeposit);
+    wireAction("#requestBtn", doRequest);
+    wireAction("#claimRedeemBtn", doClaimRedeem);
+    wireAction("#claimBtn", doClaimReward);
 
     if (window.ethereum) {
       window.ethereum.on?.("accountsChanged", () => location.reload());
