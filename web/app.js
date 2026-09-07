@@ -806,6 +806,7 @@
         const bp = new E.BrowserProvider(window.ethereum);
         signer = await bp.getSigner();
         account = await signer.getAddress();
+        walletMode = "injected"; // was left unset, so nothing downstream knew
         const btn = $("#connectBtn");
         btn.dataset.state = "connected";
         $("#connectLabel").textContent = shorten(account);
@@ -952,6 +953,33 @@
   // ============================================================
   //  WRITES
   // ============================================================
+  /**
+   * Vault bound to a signer that is actually on Xphere.
+   *
+   * connect() switches the network, but silentConnect() — the path every
+   * returning visitor takes — did not. Reads go through our own RPC, so the
+   * position and the claimable figure render correctly no matter what chain
+   * the wallet sits on; only the write fails, and ethers reports that as
+   * "could not coalesce error", which tells the user nothing. So people saw
+   * their rewards, pressed Claim, got noise, and nothing reached the chain.
+   *
+   * Rebuilding the signer here also picks up an account switched in the wallet
+   * after the page loaded.
+   */
+  async function vaultForWrite() {
+    await ensureChain();
+    const bp = new E.BrowserProvider(window.ethereum);
+    const net = await bp.getNetwork();
+    if (Number(net.chainId) !== Number(CFG.chain.chainId)) {
+      throw new Error(
+        `Your wallet is on chain ${net.chainId}. Switch it to ${CFG.chain.chainName} and try again.`
+      );
+    }
+    signer = await bp.getSigner();
+    account = await signer.getAddress();
+    return new E.Contract(CFG.contracts.vault, VAULT_ABI, signer);
+  }
+
   function needWallet() {
     if (!signer && walletMode !== "zigap") {
       // not connected — open the connect chooser
@@ -991,9 +1019,11 @@
       }
       return;
     }
-    const vault = new E.Contract(CFG.contracts.vault, VAULT_ABI, signer);
     try {
       setTx("Confirm in your wallet…", "pending");
+      // Inside the try: this one can throw now (wrong network), and outside it
+      // the rejection was unhandled, so the user got a blank status line.
+      const vault = await vaultForWrite();
       const tx = partner
         ? await vault.depositNativeWithReferral(account, pidOf(partner), { value })
         : await vault.depositNative(account, { value });
@@ -1024,9 +1054,11 @@
       }
       return;
     }
-    const vault = new E.Contract(CFG.contracts.vault, VAULT_ABI, signer);
     try {
       setTx("Confirm in your wallet…", "pending");
+      // Inside the try: this one can throw now (wrong network), and outside it
+      // the rejection was unhandled, so the user got a blank status line.
+      const vault = await vaultForWrite();
       const tx = await vault.requestRedeem(shares, account, account);
       setTx("Requesting… " + shorten(tx.hash), "pending");
       await tx.wait();
@@ -1051,7 +1083,7 @@
             await zigapVaultTx("claimRedeemNative", [id, account], 0n, "Claim matured principal", 500000);
           } else {
             setTx("Claiming matured request #" + id + "…", "pending");
-            const vault = new E.Contract(CFG.contracts.vault, VAULT_ABI, signer);
+            const vault = await vaultForWrite();
             const tx = await vault.claimRedeemNative(id, account);
             await tx.wait();
           }
@@ -1080,9 +1112,11 @@
       }
       return;
     }
-    const vault = new E.Contract(CFG.contracts.vault, VAULT_ABI, signer);
     try {
       setTx("Confirm in your wallet…", "pending");
+      // Inside the try: this one can throw now (wrong network), and outside it
+      // the rejection was unhandled, so the user got a blank status line.
+      const vault = await vaultForWrite();
       const tx = await vault.claimRewardNative(account);
       reportClaim(await tx.wait());
     } catch (err) {
