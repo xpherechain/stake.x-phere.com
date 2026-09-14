@@ -48,17 +48,20 @@ banner() {
 case "$CMD" in
   plan)
     banner
-    # APR 은 TVL 이 캡 이하인 동안 캡에만 반비례한다:
-    #   distributed = amount x 60% x min(TVL,cap) / cap
-    # 따라서 캡을 올리면 그 비율만큼 스테이커 몫이 줄고 차액은 전부 소각된다.
+    # APR = distributed x 365 / TVL 이고 distributed = amount x 60% x TVL/cap 이므로
+    # TVL 이 약분된다:  APR = 일일 정산액 x 60% x 365 / cap.
+    # 즉 APR 은 캡과 유입량만의 함수다. 캡을 올리면 그만큼 영구히 내려가고,
+    # 새 용량이 다 차도 회복되지 않는다 — 회복은 노드 수익(유입) 증가로만 가능하다.
     CURCAP=$(cast call "$VAULT" 'stakeCap()(uint256)' --rpc-url "$RPC" | awk '{print $1}')
     python3 - "$CURCAP" "$CAP_XP" <<'PY'
 import sys
 cur = int(sys.argv[1]) / 1e18
 new = float(sys.argv[2])
 print(f"APR 영향: 캡이 {cur:,.0f} → {new:,.0f} 이면")
-print(f"  스테이커 몫 x{cur/new:.3f}  (APR 도 같은 비율로 하락)")
-print(f"  나머지는 소각으로 이동. 새 캡이 찰 때까지 이 상태가 유지된다.")
+print(f"  스테이커 몫 x{cur/new:.3f}, APR 도 x{cur/new:.3f}")
+print(f"  차액은 소각으로 이동.")
+print(f"  ※ 새 용량이 다 차도 APR 은 회복되지 않는다 (TVL 이 약분되므로).")
+print(f"    원래 APR 로 되돌리려면 일일 유입이 {new/cur:.2f}배 되어야 한다.")
 PY
     echo
     echo "schedule 로 진행하면 48시간 뒤 execute 가능."
