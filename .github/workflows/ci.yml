@@ -29,3 +29,10 @@ jobs:
 
       - name: forge test
         run: forge test -vv
+
+      # The cap moves through the timelock every few months and has to land in
+      # config.js, the page copy and the FAQ JSON-LD together. Missing one is
+      # invisible in a browser, because the data-cap spans rewrite themselves
+      # on load and hide the stale HTML underneath.
+      - name: web copy matches the configured cap
+        run: python3 script/check-web-consistency.py

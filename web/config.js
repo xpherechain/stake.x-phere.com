@@ -44,7 +44,10 @@ window.XP_CONFIG = {
     label: "Round 4",
     nearFullPct: 99, // switch to the urgent state past this fill level
     fullNote: "Deposits already made keep earning — nothing changes for them.",
-    reopenNote: "Capacity frees up as unstaking requests mature, the next batch on Aug 22.",
+    // No date here on purpose. Requests mature continuously on a 7-day
+    // cooldown, so naming "the next batch" pins the copy to a day that passes
+    // — this line sat three weeks stale on the live site saying Aug 22.
+    reopenNote: "Capacity frees up as unstaking requests mature.",
   },
 
   // Where someone with no XP goes to get some. Leave `url` empty to drop the
@@ -67,7 +70,7 @@ window.XP_CONFIG = {
   // the comments give the KST the campaign was booked in.
   // Set enabled:false to pull it early.
   banner: {
-    enabled: true,
+    enabled: false, // 예치왕 campaign ended 2026-08-25
     badge: "EVENT",
     title: "Bonus XP for early stakers + big stakers",
     body: "Stake in the first wave to lock in an early bonus, or stake a large amount for a size bonus — qualify for both and they stack.",
