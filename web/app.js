@@ -478,6 +478,24 @@
         ? `${pct.toFixed(2)}% OF ${capTxt} XP`
         : `${r.label.toUpperCase()} · ${pct.toFixed(1)}% OF ${capTxt} XP`;
       rb.hidden = false;
+
+      // The band lives inside the campaign bar, so it inherits that bar's
+      // visibility — and the bar only ever unhid itself for a live campaign.
+      // Between 2026-08-25 and 09-16 there was no campaign, and this band
+      // ("Round 4 is live · 51% OF 70,000,000 XP") sat in a display:none
+      // parent, unseen. It is the one capacity figure visible without
+      // scrolling, so it has to stand on its own.
+      const bar = $("#eventBar");
+      if (bar) {
+        if (bar.dataset.campaign !== "on") {
+          // No campaign: show the band alone, and stop the bar pretending to
+          // be a link — an <a> with no href is not clickable and needs no
+          // special casing anywhere else.
+          bar.removeAttribute("href");
+          bar.classList.add("is-bandonly");
+        }
+        bar.hidden = false;
+      }
     }
 
     el.classList.toggle("is-full", full || nearFull);
@@ -1360,6 +1378,7 @@
     el.querySelector(".eb-title").textContent = b.title || "";
     el.querySelector(".eb-body").textContent = b.body || "";
     el.querySelector(".eb-cta").textContent = b.cta || "Enter now";
+    el.dataset.campaign = "on";
     el.hidden = false;
   }
 

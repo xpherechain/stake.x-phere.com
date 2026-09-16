@@ -70,13 +70,18 @@ window.XP_CONFIG = {
   // the comments give the KST the campaign was booked in.
   // Set enabled:false to pull it early.
   banner: {
-    enabled: false, // 예치왕 campaign ended 2026-08-25
-    badge: "EVENT",
-    title: "Bonus XP for early stakers + big stakers",
-    body: "Stake in the first wave to lock in an early bonus, or stake a large amount for a size bonus — qualify for both and they stack.",
-    cta: "Enter now",
-    href: "https://forms.gle/6UhKFCCwewsWDAgW8",
-    startsAt: "2026-08-12T07:00:00Z", // Wed 12 Aug, 16:00 KST
-    endsAt: "2026-08-25T15:00:00Z", // Tue 25 Aug, 24:00 KST
+    enabled: true,
+    badge: "CAMPAIGN",
+    title: "Nansen × XPHERE Staking Campaign is LIVE",
+    body: "Stake 3,000 XP or more through the Nansen Staking Hub to qualify for a share of the 247,000 XP reward pool.",
+    cta: "Learn more about how to participate", // the arrow is added by CSS
+    href: "https://x.com/Xphere_official/status/2100117486834270366?s=20",
+    startsAt: "2026-09-16T00:00:00Z",
+    // No end date was given. Unset means it runs until someone sets one or
+    // flips enabled — the previous banner hid itself on its end date and this
+    // one cannot. Put the real date here as soon as it is known, or this ends
+    // up advertising a finished campaign the way the "next batch on Aug 22"
+    // line did for three weeks.
+    endsAt: null,
   },
 };

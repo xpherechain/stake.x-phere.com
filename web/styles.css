@@ -2193,3 +2193,9 @@ pre,
 
 /* zigap brand mark in chooser */
 .cc-ico img { width: 30px; height: 30px; display: block; }
+
+/* Band without a campaign: the copy and the call to action are empty, so hide
+   them rather than let the bar reserve space for nothing. */
+.eventbar.is-bandonly { justify-content: center; padding-block: 0.9rem; }
+.eventbar.is-bandonly .eb-copy,
+.eventbar.is-bandonly .eb-cta { display: none; }
