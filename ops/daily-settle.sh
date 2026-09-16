@@ -112,6 +112,36 @@ for PK in ${COLLECTORS[@]+"${COLLECTORS[@]}"}; do
     PEND_NOW=$(cast call "$DIST" "pendingSettlement()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
     SWEEP=$(python3 -c "print(min($SWEEP, max(0, ${SWEEP_LIMIT_WEI} - $PEND_NOW)))")
   fi
+  # 스윕은 되돌릴 수 없다. Distributor 에는 출금 함수가 없고, 들어온 돈은
+  # 다음 정산에서 스테이커 배분과 소각으로 갈린다. 그래서 "노드 보상이라기엔
+  # 말이 안 되는 금액"은 보내지 않고 사람을 부른다.
+  #
+  # 2026-09-16, 새 수령지갑이 35,000,000 XP 의 경유지로 쓰였다. 63초 머물다
+  # 나갔고 그 사이에 크론이 돌지 않아 넘어갔지만, 10분 주기로 도는 이상
+  # 다음에도 빗나가리라는 보장이 없다. 스윕됐다면 2,100만이 배분되고
+  # 1,400만이 소각된 뒤 회수할 방법이 없었다.
+  #
+  # 수령지갑은 노드 보상 전용이어야 한다. 이 한도는 그 규칙이 깨졌을 때
+  # 손실 대신 알림이 나가게 하는 마지막 방어선이다.
+  MAX_SWEEP="${MAX_SWEEP_WEI:-1000000000000000000000000}" # 기본 1,000,000 XP
+  if python3 -c "exit(0 if int('$SWEEP') > int('$MAX_SWEEP') else 1)"; then
+    log "sweep BLOCKED $TAG — $(cast to-unit $SWEEP ether) XP exceeds cap $(cast to-unit $MAX_SWEEP ether) XP"
+    # 한 번 걸리면 해결될 때까지 계속 걸린다. 10분마다 알리면 채널이 죽으므로
+    # 처음 한 번과 이후 6시간마다만 보낸다.
+    GUARD_FILE="./state/sweep-blocked-${ADDR}.txt"
+    LASTW=$(cat "$GUARD_FILE" 2>/dev/null || echo 0)
+    NOWS=$(date -u +%s)
+    if [ "$((NOWS - LASTW))" -ge 21600 ]; then
+      echo "$NOWS" > "$GUARD_FILE"
+      notify "🚨 [XP Vault] 스윕 차단 — 수령지갑 ${TAG} 에 $(cast to-unit $SWEEP ether) XP${nl}노드 보상으로 보기에 과도한 금액이라 전송하지 않았습니다.${nl}수령지갑에 다른 자금이 섞였는지 확인하십시오. 스윕은 되돌릴 수 없습니다.${nl}정상이면 MAX_SWEEP_WEI 를 올리고 재실행하십시오."
+    fi
+    SWEEP=0
+    BLOCKED=1
+  else
+    BLOCKED=0
+    rm -f "./state/sweep-blocked-${ADDR}.txt" 2>/dev/null || true
+  fi
+
   # NOTE: wei 값은 bash 의 64비트 정수를 넘는다 — 비교는 python 으로
   if python3 -c "exit(0 if int('$SWEEP') > 0 else 1)"; then
     if [ -n "${SWEEP_LIMIT_WEI:-}" ]; then
@@ -123,7 +153,7 @@ for PK in ${COLLECTORS[@]+"${COLLECTORS[@]}"}; do
       log "sweep FAILED $TAG"
       notify "🚨 [XP Vault] 스윕 실패 — 수령지갑 ${TAG} → Distributor 전송 에러. 서버/가스 확인 필요."
     fi
-  else
+  elif [ "$BLOCKED" = "0" ]; then
     log "sweep skip $TAG (balance <= gas reserve)"
   fi
 
