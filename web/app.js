@@ -498,9 +498,29 @@
     el.hidden = false;
   }
 
+  /**
+   * The split is not 60/40 unless the vault is full. Distribution is sized
+   * against the whole cap, so the share belonging to empty capacity burns on
+   * top of the base burn — at half full, stakers get 30% and 70% burns.
+   *
+   * Printing a flat "60% / 40%+" was true only while the cap was full, and
+   * went wrong the moment it doubled. This reads the same numbers the vault
+   * settles on, so it cannot drift again.
+   */
+  function renderSplit(tvl, cap) {
+    if (!(cap > 0)) return;
+    const stake = 60 * Math.min(1, tvl / cap);
+    const txt = `${stake.toFixed(0)}% STAKE · ${(100 - stake).toFixed(0)}% BURN`;
+    // $$ , not $: the ticker duplicates its whole set to scroll seamlessly, so
+    // updating the first chip leaves its twin showing the old figure as the
+    // marquee comes round. wireCapLabels() has the same note for the same reason.
+    $$("[data-split]").forEach((el) => (el.textContent = txt));
+  }
+
   function renderMetrics({ tvl, apr, burned, cap }) {
     lastApr = apr;
     renderCapNotice(tvl, cap);
+    renderSplit(tvl, cap);
     updateEstimate();
     animateTo($('[data-metric="tvl"]'), tvl, (n) => fmtNum(n) + " XP");
     animateTo($('[data-metric="apr"]'), apr * 100, (n) => n.toFixed(2) + "%");
