@@ -51,118 +51,131 @@ if [ -n "$config_error" ]; then
   exit 1
 fi
 
-# 1) 스윕 (경로 B: COLLECTOR_PK 있을 때만)
-#    SWEEP_LIMIT_WEI = "에폭당 투입 예산" — 부분 스윕 모드.
-#    Distributor 대기 잔고가 예산에 찰 때까지만 채운다. settle이 하루 1번
-#    잔고를 소진하므로 자연히 '하루 SWEEP_LIMIT_WEI'가 강제된다.
-#    (크론이 2시간마다 돌아도 예산 초과 투입이 불가능)
-SWEPT="0"
-if [ -n "${COLLECTOR_PK:-}" ]; then
-  COLLECTOR=$(cast wallet address --private-key "$COLLECTOR_PK")
-  BAL=$(cast balance "$COLLECTOR" --rpc-url "$RPC")
 
-  # 1a) 유니온 노드 입금.
+# ── 수령지갑 목록 ────────────────────────────────────────────────
+# 노드마다 보상 주소가 따로 있고, 그 주소는 노드 설정에 박혀 있어 바꿀 수 없다.
+# 그래서 유니온 노드가 늘면 스윕할 지갑도 는다. COLLECTOR_PK 는 기존 지갑
+# 그대로 두고 COLLECTOR_PK_2 … _5 를 추가하면 된다.
+#
+# 노드를 Distributor 로 직접 지급하도록 설정했다면 여기 넣을 것이 없다 —
+# 스윕 자체가 불필요하고, 키도 생기지 않는다(그쪽이 더 낫다).
+COLLECTORS=()
+[ -n "${COLLECTOR_PK:-}" ] && COLLECTORS+=("$COLLECTOR_PK")
+for i in 2 3 4 5; do
+  v="COLLECTOR_PK_$i"
+  [ -n "${!v:-}" ] && COLLECTORS+=("${!v}")
+done
+
+mkdir -p ./state
+ACC_FILE=./state/inflow-accum.txt
+ACC_DAY_FILE=./state/inflow-day.txt
+BAL_LINES=""
+
+for PK in ${COLLECTORS[@]+"${COLLECTORS[@]}"}; do
+  ADDR=$(cast wallet address --private-key "$PK")
+  TAG="${ADDR:0:10}…"
+  BAL=$(cast balance "$ADDR" --rpc-url "$RPC")
+
+  # 1a) 노드 입금 집계.
   #     보상은 검증인 순번이 돌아올 때마다 589 XP씩 들어오므로, 유입 건마다
   #     알리면 하루 백 건을 넘는다. 그 빈도에서는 아무도 읽지 않고, 정작
-  #     읽어야 할 실패 알림이 그 사이에 묻힌다.
-  #
-  #     대신 누적만 해두고 하루 한 번 합계로 보고한다. 개별 유입은 정상
-  #     동작이라 알릴 가치가 없고, 이상 신호는 "들어와야 할 게 안 들어온
-  #     것"인데 그건 합계로만 보인다.
-  mkdir -p ./state
-  LAST_BAL_FILE=./state/collector-balance.txt
-  ACC_FILE=./state/inflow-accum.txt
-  ACC_DAY_FILE=./state/inflow-day.txt
-  if [ -f "$LAST_BAL_FILE" ]; then
-    LAST_BAL=$(cat "$LAST_BAL_FILE")
+  #     읽어야 할 실패 알림이 그 사이에 묻힌다. 누적만 해두고 하루 한 번
+  #     합계로 보고한다 — 이상 신호는 "들어와야 할 게 안 들어온 것"인데
+  #     그건 합계로만 보인다.
+  BAL_FILE="./state/collector-balance-${ADDR}.txt"
+  LEGACY=./state/collector-balance.txt
+  # 지갑이 하나뿐이던 시절의 파일명을 물려받는다. 그냥 두면 기준점을 잃고
+  # 그날 유입 전체가 "신규 입금"으로 잡히거나 통째로 빠진다.
+  [ ! -f "$BAL_FILE" ] && [ -f "$LEGACY" ] && mv "$LEGACY" "$BAL_FILE"
+
+  if [ -f "$BAL_FILE" ]; then
+    LAST_BAL=$(cat "$BAL_FILE")
     INFLOW=$(python3 -c "print(max(0, $BAL - $LAST_BAL))")
     if python3 -c "exit(0 if int('$INFLOW') > 0 else 1)"; then
       ACC=$(cat "$ACC_FILE" 2>/dev/null || echo 0)
       python3 -c "print($ACC + $INFLOW)" > "$ACC_FILE"
-      log "node deposit +$(cast to-unit $INFLOW ether) XP (누적 $(cast to-unit $(cat $ACC_FILE) ether))"
+      log "node deposit $TAG +$(cast to-unit $INFLOW ether) XP (누적 $(cast to-unit $(cat $ACC_FILE) ether))"
     fi
-
-    # 하루 한 번 합계 보고. 날짜가 바뀐 첫 실행에서만 나가므로 정확히 1건이다.
-    TODAY=$(date -u +%F)
-    if [ "$(cat "$ACC_DAY_FILE" 2>/dev/null)" != "$TODAY" ]; then
-      ACC=$(cat "$ACC_FILE" 2>/dev/null || echo 0)
-      if python3 -c "exit(0 if int('$ACC') >= int('${DEPOSIT_ALERT_WEI:-1000000000000000000000}') else 1)"; then
-        notify "🟢 [XP Vault] 노드 보상 24시간 누적${nl}수량: $(cast to-unit $ACC ether) XP${nl}수령지갑 잔고: $(cast to-unit $BAL ether) XP"
-      fi
-      echo "$TODAY" > "$ACC_DAY_FILE"
-      echo 0 > "$ACC_FILE"
-    fi
-  else
-    # 첫 실행: 기준점만 잡고 알리지 않는다.
-    date -u +%F > "$ACC_DAY_FILE"
-    echo 0 > "$ACC_FILE"
   fi
 
+  # 1) 스윕 → Distributor
+  #    SWEEP_LIMIT_WEI = "에폭당 투입 예산" — 부분 스윕 모드.
+  #    Distributor 대기 잔고가 예산에 찰 때까지만 채운다. settle이 하루 1번
+  #    잔고를 소진하므로 자연히 '하루 SWEEP_LIMIT_WEI'가 강제된다.
+  #    지갑이 여럿이어도 예산은 Distributor 잔고 기준이라 전체에 한 번만
+  #    적용된다 — 앞 지갑이 예산을 채우면 뒤 지갑은 자동으로 건너뛴다.
   SWEEP=$(python3 -c "print(max(0, $BAL - ${GAS_RESERVE_WEI:-0}))")
-  # PEND_NOW is only meaningful in partial-sweep mode, but the log line below
-  # reads it either way — under `set -u` an unset one kills the script right
-  # before the transfer, so give it a value in both modes.
+  # PEND_NOW 는 부분 스윕에서만 의미가 있지만 아래 로그가 두 모드 모두에서
+  # 읽는다 — set -u 에서 미설정이면 전송 직전에 스크립트가 죽는다.
   PEND_NOW=0
   if [ -n "${SWEEP_LIMIT_WEI:-}" ]; then
     PEND_NOW=$(cast call "$DIST" "pendingSettlement()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
     SWEEP=$(python3 -c "print(min($SWEEP, max(0, ${SWEEP_LIMIT_WEI} - $PEND_NOW)))")
   fi
-  # NOTE: wei amounts exceed bash's 64-bit integers — compare via python
+  # NOTE: wei 값은 bash 의 64비트 정수를 넘는다 — 비교는 python 으로
   if python3 -c "exit(0 if int('$SWEEP') > 0 else 1)"; then
     if [ -n "${SWEEP_LIMIT_WEI:-}" ]; then
-      log "sweep $(cast to-unit $SWEEP ether) XP -> distributor (budget $(cast to-unit $PEND_NOW ether)/$(cast to-unit ${SWEEP_LIMIT_WEI} ether) XP before)"
+      log "sweep $TAG $(cast to-unit $SWEEP ether) XP -> distributor (budget $(cast to-unit $PEND_NOW ether)/$(cast to-unit ${SWEEP_LIMIT_WEI} ether) XP before)"
     else
-      log "sweep $(cast to-unit $SWEEP ether) XP -> distributor (full sweep)"
+      log "sweep $TAG $(cast to-unit $SWEEP ether) XP -> distributor (full sweep)"
     fi
-    if cast send "$DIST" --value "$SWEEP" --rpc-url "$RPC" --private-key "$COLLECTOR_PK" >/dev/null; then
-      SWEPT=$(cast to-unit $SWEEP ether)
-    else
-      log "sweep FAILED"
-      notify "🚨 [XP Vault] 스윕 실패 — 수령지갑→Distributor 전송 에러. 서버/가스 확인 필요."
+    if ! cast send "$DIST" --value "$SWEEP" --rpc-url "$RPC" --private-key "$PK" >/dev/null; then
+      log "sweep FAILED $TAG"
+      notify "🚨 [XP Vault] 스윕 실패 — 수령지갑 ${TAG} → Distributor 전송 에러. 서버/가스 확인 필요."
     fi
   else
-    log "sweep skip (collector balance <= gas reserve)"
+    log "sweep skip $TAG (balance <= gas reserve)"
   fi
-fi
 
-# 1b) 잔여분 콜드월렛 대피 (COLD_ADDR 설정 시)
-#     부분 스윕에서 예산을 초과해 남는 보상은 수령지갑(핫월렛)에 계속 쌓인다.
-#     수령주소는 노드 설정상 변경할 수 없으므로 잔고를 낮게 유지하는 것이
-#     유일한 방어책 — 예산 충전 후 남는 전액을 콜드월렛으로 옮긴다.
-#     실패해도 정산은 계속 진행한다(자금은 수령지갑에 그대로 남음).
-if [ -n "${COLLECTOR_PK:-}" ] && [ -n "${COLD_ADDR:-}" ]; then
-  BAL2=$(cast balance "$COLLECTOR" --rpc-url "$RPC")
-  EVAC=$(python3 -c "print(max(0, $BAL2 - ${GAS_RESERVE_WEI:-0}))")
-  MIN_EVAC="${MIN_EVACUATE_WEI:-1000000000000000000000}" # 기본 1,000 XP 이상일 때만
-  # 방어: 정산 예산이 아직 안 찼으면 대피하지 않는다. 스윕이 이미 예산을
-  # 우선 충전하므로 정상 흐름에서는 발생하지 않지만, 어떤 이유로든 예산이
-  # 미달인 상태에서 자금이 콜드월렛으로 빠지는 일은 없어야 한다.
-  BUDGET_OK=1
-  if [ -n "${SWEEP_LIMIT_WEI:-}" ]; then
-    PEND_CHK=$(cast call "$DIST" "pendingSettlement()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
-    python3 -c "exit(0 if int('$PEND_CHK') >= int('${SWEEP_LIMIT_WEI}') else 1)" || BUDGET_OK=0
-  fi
-  if [ "$BUDGET_OK" = "0" ]; then
-    log "evacuate skip — settle budget not yet funded ($(cast to-unit $PEND_CHK ether)/$(cast to-unit ${SWEEP_LIMIT_WEI} ether) XP)"
-  elif python3 -c "exit(0 if int('$EVAC') >= int('$MIN_EVAC') else 1)"; then
-    PEND_AFTER=$(cast call "$DIST" "pendingSettlement()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
-    log "evacuate $(cast to-unit $EVAC ether) XP -> cold (settle budget already funded: $(cast to-unit $PEND_AFTER ether)/$(cast to-unit ${SWEEP_LIMIT_WEI:-0} ether) XP)"
-    if cast send "$COLD_ADDR" --value "$EVAC" --rpc-url "$RPC" --private-key "$COLLECTOR_PK" >/dev/null; then
-      # 성공은 로그만 남긴다. 정상 동작이 하루 여러 번 반복되는 일이라
-      # 슬랙으로 보내면 정작 봐야 할 알림이 묻힌다. 실패는 그대로 알린다.
-      log "evacuated $(cast to-unit $EVAC ether) XP -> cold"
-    else
-      log "evacuate FAILED"
-      notify "🚨 [XP Vault] 콜드월렛 대피 실패 — 수령지갑에 $(cast to-unit $EVAC ether) XP 잔류. 가스/RPC 확인 필요."
+  # 1b) 잔여분 콜드월렛 대피 (COLD_ADDR 설정 시)
+  #     부분 스윕에서 예산을 초과해 남는 보상은 수령지갑(핫월렛)에 계속 쌓인다.
+  #     수령주소는 노드 설정상 변경할 수 없으므로 잔고를 낮게 유지하는 것이
+  #     유일한 방어책이다. 실패해도 정산은 계속 진행한다.
+  if [ -n "${COLD_ADDR:-}" ]; then
+    BAL2=$(cast balance "$ADDR" --rpc-url "$RPC")
+    EVAC=$(python3 -c "print(max(0, $BAL2 - ${GAS_RESERVE_WEI:-0}))")
+    MIN_EVAC="${MIN_EVACUATE_WEI:-1000000000000000000000}" # 기본 1,000 XP 이상일 때만
+    # 방어: 정산 예산이 아직 안 찼으면 대피하지 않는다.
+    BUDGET_OK=1
+    if [ -n "${SWEEP_LIMIT_WEI:-}" ]; then
+      PEND_CHK=$(cast call "$DIST" "pendingSettlement()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
+      python3 -c "exit(0 if int('$PEND_CHK') >= int('${SWEEP_LIMIT_WEI}') else 1)" || BUDGET_OK=0
+    fi
+    if [ "$BUDGET_OK" = "0" ]; then
+      log "evacuate skip $TAG — settle budget not yet funded"
+    elif python3 -c "exit(0 if int('$EVAC') >= int('$MIN_EVAC') else 1)"; then
+      log "evacuate $TAG $(cast to-unit $EVAC ether) XP -> cold"
+      if cast send "$COLD_ADDR" --value "$EVAC" --rpc-url "$RPC" --private-key "$PK" >/dev/null; then
+        # 성공은 로그만. 정상 동작이 하루 여러 번 반복되는 일이라 슬랙으로
+        # 보내면 정작 봐야 할 알림이 묻힌다. 실패는 그대로 알린다.
+        log "evacuated $TAG $(cast to-unit $EVAC ether) XP -> cold"
+      else
+        log "evacuate FAILED $TAG"
+        notify "🚨 [XP Vault] 콜드월렛 대피 실패 — 수령지갑 ${TAG} 에 $(cast to-unit $EVAC ether) XP 잔류. 가스/RPC 확인 필요."
+      fi
     fi
   fi
-fi
 
-# 수령지갑 잔고를 기록해 둔다. 다음 실행에서 이 값과의 차이로 노드 입금을
-# 판정하므로, 스윕·대피가 모두 끝난 뒤여야 한다.
-if [ -n "${COLLECTOR_PK:-}" ]; then
-  mkdir -p ./state
-  cast balance "$COLLECTOR" --rpc-url "$RPC" > ./state/collector-balance.txt 2>/dev/null || true
+  # 잔고를 기록해 둔다. 다음 실행에서 이 값과의 차이로 노드 입금을 판정하므로
+  # 스윕·대피가 모두 끝난 뒤여야 한다.
+  cast balance "$ADDR" --rpc-url "$RPC" > "$BAL_FILE" 2>/dev/null || true
+  BAL_LINES="${BAL_LINES}${nl}  ${TAG} $(cast to-unit "$(cat "$BAL_FILE")" ether) XP"
+done
+
+# 1c) 하루 한 번 유입 합계 보고. 날짜가 바뀐 첫 실행에서만 나가므로 정확히 1건.
+if [ "${#COLLECTORS[@]}" -gt 0 ]; then
+  TODAY=$(date -u +%F)
+  if [ "$(cat "$ACC_DAY_FILE" 2>/dev/null)" != "$TODAY" ]; then
+    # 설치 첫날은 부분 집계라 보고하지 않는다 — 하루치인 것처럼 읽히면 안 된다.
+    if [ -f "$ACC_DAY_FILE" ]; then
+      ACC=$(cat "$ACC_FILE" 2>/dev/null || echo 0)
+      if python3 -c "exit(0 if int('$ACC') >= int('${DEPOSIT_ALERT_WEI:-1000000000000000000000}') else 1)"; then
+        notify "🟢 [XP Vault] 노드 보상 24시간 누적${nl}수량: $(cast to-unit $ACC ether) XP${nl}수령지갑 (${#COLLECTORS[@]}개) 잔고:${BAL_LINES}"
+      fi
+    fi
+    echo "$TODAY" > "$ACC_DAY_FILE"
+    echo 0 > "$ACC_FILE"
+  fi
 fi
 
 # 2) settle (에폭 경과 + minSettle 충족 시)
