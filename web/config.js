@@ -63,7 +63,7 @@ window.XP_CONFIG = {
   // Must track the on-chain stakeCap. It labels every static "of N cap"
   // mention on the page, so a stale value here contradicts the live figure
   // sitting next to it.
-  stakeCapXP: 35_000_000,
+  stakeCapXP: 70_000_000,
 
   // Temporary top band. Shown only between startsAt and endsAt, so it appears
   // and disappears on its own — no deploy needed at either end. Times are UTC;
