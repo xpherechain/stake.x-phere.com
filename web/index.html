@@ -225,33 +225,12 @@
       </div>
     </div>
 
-    <div class="preview-banner" id="previewBanner" hidden>
-      <span class="pb-tag">PREVIEW</span>
-      <span class="pb-text" id="previewBannerText">Staking is not open yet — numbers are illustrative</span>
-      <span class="pb-eta" id="previewBannerEta"></span>
-    </div>
-
-    <div
-      class="launch-modal"
-      id="launchModal"
-      hidden
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="lmTitle"
-      onclick="if(event.target===this){this.hidden=true;this.style.display='none';}"
-    >
-      <div class="lm-card">
-        <div class="lm-kicker">Coming soon</div>
-        <h2 id="lmTitle">Staking is not open yet</h2>
-        <p id="lmNote"></p>
-        <div class="lm-eta" id="lmEta"></div>
-        <button
-          class="btn btn-primary"
-          id="lmClose"
-          onclick="var m=document.getElementById('launchModal');if(m){m.hidden=true;m.style.display='none';window.scrollTo({top:0,behavior:'smooth'})}"
-        >Explore the preview →</button>
-      </div>
-    </div>
+    
+    <!-- 런칭 전 안내(리본·모달)는 2026-08-03 오픈과 함께 제거했다. hidden 이 붙어
+         있어 화면에는 안 나왔지만 문구가 HTML 에 남아, 소스를 읽는 쪽(크롤러·링크
+         미리보기·블록 익스플로러)에는 7천만 XP 가 예치된 볼트가 아직 열리지 않은
+         것처럼 보였다. 실제로 XPScan 이 그렇게 읽고 문의가 왔다. 되살릴 일이 있으면
+         git 에서 꺼낼 것. -->
 
     <span class="demo-badge" id="demoBadge" hidden>demo data · contracts not yet live</span>
 
@@ -577,6 +556,6 @@
       })();
     </script>
     <script src="zigap.js?v=5"></script>
-    <script src="app.js?v=43"></script>
+    <script src="app.js?v=44"></script>
   </body>
 </html>

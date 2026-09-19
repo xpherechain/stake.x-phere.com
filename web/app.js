@@ -1264,50 +1264,13 @@
   // Pre-launch notice: ribbon + first-visit modal + ticker PREVIEW chip.
   // Fully driven by CFG.launch.live — flip it to true at launch and all of
   // this disappears without further code changes.
+  // 런칭 전 안내는 오픈(2026-08-03)과 함께 마크업째 걷어냈다. CFG.launch.live 는
+  // 남겨 두되, 여기서 하는 일은 티커 칩을 LIVE 로 두는 것뿐이다.
   function wireLaunchNotice() {
-    const launch = CFG.launch || {};
-    const modal = $("#launchModal");
-
-    // At launch: flip CFG.launch.live = true → hide the modal/ribbon and restore LIVE.
-    if (launch.live === true) {
-      if (modal) {
-        modal.hidden = true;
-        modal.style.display = "none";
-      }
-      return;
-    }
-
-    // Preview mode: the modal shows on every visit (inline bootstrap already showed
-    // it; no dismissal memory). Fill copy + wire Esc close.
-    const banner = $("#previewBanner");
-    if (banner) {
-      banner.hidden = false;
-      $("#previewBannerText").textContent = launch.headline
-        ? launch.headline + " — numbers are illustrative"
-        : "Staking is not open yet — numbers are illustrative";
-      if (launch.eta) $("#previewBannerEta").textContent = launch.eta;
-    }
-
-    // ticker: LIVE -> PREVIEW while not launched
+    if ((CFG.launch || {}).live === true) return;
     $$(".tk").forEach((chip) => {
       if (chip.textContent.trim() === "LIVE") chip.lastChild.textContent = " PREVIEW";
     });
-
-    if (modal) {
-      if (launch.headline) $("#lmTitle").textContent = launch.headline;
-      if (launch.note) $("#lmNote").textContent = launch.note;
-      if (launch.eta) $("#lmEta").textContent = launch.eta;
-      const closeModal = () => {
-        modal.hidden = true;
-        modal.style.display = "none";
-      };
-      document.addEventListener("keydown", function esc(e) {
-        if (e.key === "Escape") {
-          closeModal();
-          document.removeEventListener("keydown", esc);
-        }
-      });
-    }
   }
 
   function wireTicker() {
