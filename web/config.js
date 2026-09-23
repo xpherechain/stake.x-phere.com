@@ -88,7 +88,16 @@ window.XP_CONFIG = {
     enabled: true,
     badge: "CAMPAIGN",
     title: "Nansen × XPHERE Staking Campaign is LIVE",
-    body: "Stake 3,000 XP or more through the Nansen Staking Hub to qualify for a share of the 247,000 XP reward pool.",
+    // The vault has been at its cap since the 70M raise, so the original copy
+    // ("Stake 3,000 XP or more … to qualify") asked for something nobody could
+    // do: maxDeposit() is effectively zero. The constraint goes first, before
+    // the ask, and says where a seat actually comes from — capacity opens when
+    // someone REQUESTS an unstake, not when a cooldown ends (see reopenNote).
+    //
+    // Deliberately no cap figure here: check-web-consistency.py only scans
+    // index.html, so a number in this string would go stale on the next raise
+    // with nothing to catch it. The round band below already shows the live one.
+    body: "The vault is currently at its cap — a seat opens the moment another staker requests an unstake. Stake 3,000 XP or more through the Nansen Staking Hub to qualify for a share of the 247,000 XP reward pool.",
     cta: "Learn more about how to participate", // the arrow is added by CSS
     href: "https://x.com/Xphere_official/status/2100117486834270366?s=20",
     startsAt: "2026-09-16T00:00:00Z",
