@@ -56,26 +56,48 @@ fi
 #    부분 스윕(SWEEP_LIMIT_WEI 설정) 중에는 예산 초과분이 수령지갑에 남는 것이
 #    설계된 동작이므로 누적 자체는 경보 대상이 아니다. 그 모드의 실패 신호는
 #    "Distributor 예산 미충전"이며 아래에서 따로 본다.
-if [ -n "${COLLECTOR_PK:-}" ]; then
-  cb=$(cast balance "$(cast wallet address --private-key "$COLLECTOR_PK")" --rpc-url "$RPC")
+#
+#    지갑 목록은 daily-settle.sh 와 같은 규칙으로 만든다. 예전엔 여기서
+#    COLLECTOR_PK 하나만 봤는데, 스윕은 _2…_5 까지 돌기 때문에 2번 지갑의
+#    스윕이 멈춰도 경보가 울리지 않았다.
+COLLECTORS=()
+[ -n "${COLLECTOR_PK:-}" ] && COLLECTORS+=("$COLLECTOR_PK")
+for i in 2 3 4 5; do
+  v="COLLECTOR_PK_$i"
+  [ -n "${!v:-}" ] && COLLECTORS+=("${!v}")
+done
+
+cb_total=0
+CB_LINES=""
+any_funded=0
+for PK in ${COLLECTORS[@]+"${COLLECTORS[@]}"}; do
+  ADDR=$(cast wallet address --private-key "$PK")
+  TAG="${ADDR:0:10}…"
+  cb=$(cast balance "$ADDR" --rpc-url "$RPC")
+  cb_total=$(python3 -c "print($cb_total + $cb)")
+  CB_LINES="${CB_LINES}${nl}    ${TAG} $(xpfmt "$cb") XP"
+  python3 -c "exit(0 if $cb > ${GAS_RESERVE_WEI:-0} else 1)" && any_funded=1
+
   if [ -z "${SWEEP_LIMIT_WEI:-}" ]; then
-    COLLECTOR_ALERT_WEI="${COLLECTOR_ALERT_WEI:-100000000000000000000000}" # 100,000 XP
-    if python3 -c "exit(0 if $cb > $COLLECTOR_ALERT_WEI else 1)"; then
-      alerts+="⚠ 수령지갑 잔고 $(cast to-unit $cb ether) XP 누적 — 스윕 실패 의심${nl}"
+    CB_ALERT="${COLLECTOR_ALERT_WEI:-100000000000000000000000}" # 100,000 XP
+    if python3 -c "exit(0 if $cb > $CB_ALERT else 1)"; then
+      alerts+="⚠ 수령지갑 ${TAG} 잔고 $(cast to-unit $cb ether) XP 누적 — 스윕 실패 의심${nl}"
     fi
-  else
-    # 부분 스윕: 수령지갑에 재원이 있는데도 Distributor 대기잔고가 예산에
-    # 못 미치면(다음 정산분 미확보) 스윕 경로에 문제가 있다는 뜻.
-    if python3 -c "exit(0 if $pend < ${SWEEP_LIMIT_WEI} and $cb > ${GAS_RESERVE_WEI:-0} else 1)"; then
-      alerts+="⚠ 다음 정산분 미충전 — 대기 $(cast to-unit $pend ether) XP < 예산 $(cast to-unit ${SWEEP_LIMIT_WEI} ether) XP (수령지갑엔 $(cast to-unit $cb ether) XP 보유) — 스윕 확인${nl}"
-    fi
+  elif [ -n "${COLD_ADDR:-}" ]; then
     # 대피가 켜져 있으면 핫월렛 잔고는 낮게 유지되어야 한다 — 누적은 대피 실패 신호.
-    if [ -n "${COLD_ADDR:-}" ]; then
-      EVAC_ALERT="${COLLECTOR_ALERT_WEI:-20000000000000000000000}" # 기본 20,000 XP
-      if python3 -c "exit(0 if $cb > $EVAC_ALERT else 1)"; then
-        alerts+="⚠ 수령지갑(핫월렛) 잔고 $(cast to-unit $cb ether) XP — 콜드월렛 대피 실패 의심${nl}"
-      fi
+    EVAC_ALERT="${COLLECTOR_ALERT_WEI:-20000000000000000000000}" # 기본 20,000 XP
+    if python3 -c "exit(0 if $cb > $EVAC_ALERT else 1)"; then
+      alerts+="⚠ 수령지갑(핫월렛) ${TAG} 잔고 $(cast to-unit $cb ether) XP — 콜드월렛 대피 실패 의심${nl}"
     fi
+  fi
+done
+
+# 부분 스윕: 수령지갑에 재원이 있는데도 Distributor 대기잔고가 예산에 못 미치면
+# (다음 정산분 미확보) 스윕 경로에 문제가 있다는 뜻. 예산은 Distributor 잔고
+# 기준이라 전체에 한 번만 적용된다 — 지갑마다 울리면 같은 사실이 중복된다.
+if [ -n "${SWEEP_LIMIT_WEI:-}" ] && [ "$any_funded" = "1" ]; then
+  if python3 -c "exit(0 if $pend < ${SWEEP_LIMIT_WEI} else 1)"; then
+    alerts+="⚠ 다음 정산분 미충전 — 대기 $(cast to-unit $pend ether) XP < 예산 $(cast to-unit ${SWEEP_LIMIT_WEI} ether) XP (수령지갑 합계 $(cast to-unit $cb_total ether) XP 보유) — 스윕 확인${nl}"
   fi
 fi
 
@@ -85,8 +107,10 @@ fi
 cap=$(c "$VAULT" "stakeCap()(uint256)")
 burned=$(c "$DIST" "totalBurned()(uint256)")
 state=$(status_block "$staked" "$cap" "$predeem" "$reserves" "$held" "$pend" "$burned" "$next")
-if [ -n "${COLLECTOR_PK:-}" ]; then
-  state+="${nl}  수령지갑      $(xpfmt ${cb:-0}) XP"
+if [ "${#COLLECTORS[@]}" -eq 1 ]; then
+  state+="${nl}  수령지갑      $(xpfmt $cb_total) XP"
+elif [ "${#COLLECTORS[@]}" -gt 1 ]; then
+  state+="${nl}  수령지갑 (${#COLLECTORS[@]}개)${CB_LINES}"
 fi
 
 if [ -n "$alerts" ]; then
