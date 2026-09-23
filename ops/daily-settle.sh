@@ -5,7 +5,10 @@
 #   - 경로 A(프로토콜이 Distributor로 직접 지급)면 COLLECTOR_PK를 비워두면
 #     스윕 단계를 건너뛰고 settle만 수행한다.
 #   - settle은 permissionless라 실패해도 자금 유실 없음(다음 실행/누구나 재호출).
-#   - 정산 성공/실패는 Slack(SLACK_WEBHOOK)·Telegram(TG_*)으로 알림.
+#   - 정산 실패는 Slack(SLACK_WEBHOOK)·Telegram(TG_*)으로 즉시 알림.
+#   - 정기 알림은 정산 직후 "일일 요약" 한 건뿐이다(정산 결과 + 노드 유입
+#     + 현황). 예전의 노드보상누적·정산완료·일일현황 3건을 합친 것이다.
+#     자세한 배경은 notify-lib.sh 머리말 참고.
 # 사용: ops/daily-settle.sh   (crontab 에서 호출)
 # ============================================================
 set -euo pipefail
@@ -14,6 +17,8 @@ cd "$(dirname "$0")"
 # (cron, sudo -u 는 로그인 셸을 거치지 않아 ~/.foundry/bin 이 빠진다)
 export PATH="$PATH:$HOME/.foundry/bin:/home/xpops/.foundry/bin:/usr/local/bin"
 set -a; source ./.env; set +a
+# notify() / xpfmt() / status_block() / 일일 요약 중복 방지 플래그
+source ./notify-lib.sh
 : "${RPC:?}"; : "${DIST:?}"
 log() { echo "[$(date -u +%FT%TZ)] $*"; }
 nl=$'\n'
@@ -27,23 +32,6 @@ config_error=""
 [ -z "${SETTLE_PK:-}" ] && [ -z "${COLLECTOR_PK:-}" ] && \
   config_error="${config_error:+$config_error, }서명 키가 모두 비어 있음"
 
-notify() { # $1 = multiline message
-  if [ -n "${SLACK_WEBHOOK:-}" ]; then
-    SLACK_WEBHOOK="$SLACK_WEBHOOK" python3 - "$1" <<'PY' || true
-import json, os, sys, urllib.request
-req = urllib.request.Request(
-    os.environ["SLACK_WEBHOOK"],
-    json.dumps({"text": sys.argv[1]}).encode(),
-    {"Content-Type": "application/json"},
-)
-urllib.request.urlopen(req, timeout=10)
-PY
-  fi
-  if [ -n "${TG_TOKEN:-}" ] && [ -n "${TG_CHAT:-}" ]; then
-    curl -s "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
-      --data-urlencode "chat_id=${TG_CHAT}" --data-urlencode "text=$1" >/dev/null || true
-  fi
-}
 
 if [ -n "$config_error" ]; then
   log "CONFIG ERROR: $config_error — 중단"
@@ -68,7 +56,6 @@ done
 
 mkdir -p ./state
 ACC_FILE=./state/inflow-accum.txt
-ACC_DAY_FILE=./state/inflow-day.txt
 BAL_LINES=""
 
 for PK in ${COLLECTORS[@]+"${COLLECTORS[@]}"}; do
@@ -189,24 +176,13 @@ for PK in ${COLLECTORS[@]+"${COLLECTORS[@]}"}; do
   # 잔고를 기록해 둔다. 다음 실행에서 이 값과의 차이로 노드 입금을 판정하므로
   # 스윕·대피가 모두 끝난 뒤여야 한다.
   cast balance "$ADDR" --rpc-url "$RPC" > "$BAL_FILE" 2>/dev/null || true
-  BAL_LINES="${BAL_LINES}${nl}  ${TAG} $(cast to-unit "$(cat "$BAL_FILE")" ether) XP"
+  BAL_LINES="${BAL_LINES}${nl}    ${TAG} $(xpfmt "$(cat "$BAL_FILE")") XP"
 done
 
-# 1c) 하루 한 번 유입 합계 보고. 날짜가 바뀐 첫 실행에서만 나가므로 정확히 1건.
-if [ "${#COLLECTORS[@]}" -gt 0 ]; then
-  TODAY=$(date -u +%F)
-  if [ "$(cat "$ACC_DAY_FILE" 2>/dev/null)" != "$TODAY" ]; then
-    # 설치 첫날은 부분 집계라 보고하지 않는다 — 하루치인 것처럼 읽히면 안 된다.
-    if [ -f "$ACC_DAY_FILE" ]; then
-      ACC=$(cat "$ACC_FILE" 2>/dev/null || echo 0)
-      if python3 -c "exit(0 if int('$ACC') >= int('${DEPOSIT_ALERT_WEI:-1000000000000000000000}') else 1)"; then
-        notify "🟢 [XP Vault] 노드 보상 24시간 누적${nl}수량: $(cast to-unit $ACC ether) XP${nl}수령지갑 (${#COLLECTORS[@]}개) 잔고:${BAL_LINES}"
-      fi
-    fi
-    echo "$TODAY" > "$ACC_DAY_FILE"
-    echo 0 > "$ACC_FILE"
-  fi
-fi
+# 1c) 유입은 쌓기만 한다. 보고와 리셋은 아래 일일 요약에서 함께 한다.
+#     예전에는 00:00 UTC 에 따로 알리고 리셋했는데, 그러면 정산 시각(06시대)
+#     요약에 실을 수 있는 값이 그날 0~6시치뿐이라 하루치가 되지 않는다.
+#     이제 집계 구간은 "직전 요약 이후" = 사실상 정산 간격(24h)이다.
 
 # 2) settle (에폭 경과 + minSettle 충족 시)
 #    SETTLE_HOUR_UTC 설정 시 "그 시각 이후 그날의 첫 기회"에만 정산한다
@@ -254,8 +230,44 @@ if [ "$OK" = "true" ]; then
     S_PR=$(cast call "$VAULT" "totalPendingRedeem()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
     S_RR=$(cast call "$VAULT" "rewardReserves()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
     S_APR=$(python3 -c "print(f'{$PEND*${DIST_RATIO_BPS:-6000}/10000*365/max($S_TVL,$S_CAP)*100:.2f}')")
-    x(){ cast to-unit "${1:-0}" ether | awk '{printf "%\047.2f", $1}'; }
-    notify "🔥 [XP Vault] 에폭 정산 완료${nl}정산액: $(x $PEND) XP${nl}→ 소각: $BURNED XP · 스테이커: $DISTED XP${nl}누적 소각: $(x $B1) XP${nl}${nl}📊 정산 후 현황${nl}  총 스테이킹  $(x $S_TVL) XP  (캡 $(x $S_CAP))${nl}  인출 대기    $(x $S_PR) XP${nl}  이자 대기    $(x $S_RR) XP${nl}  이번 정산 기준 APR  ${S_APR}%"
+    # 요약에 실을 나머지 수치. WXP 가 .env 에 없으면 볼트 보유 줄만 빠진다.
+    S_HELD=""
+    [ -n "${WXP:-}" ] && S_HELD=$(cast call "$WXP" "balanceOf(address)(uint256)" "$VAULT" --rpc-url "$RPC" | awk '{print $1}')
+    S_NEXT=$(cast call "$DIST" "nextSettleTime()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
+    S_PEND=$(cast call "$DIST" "pendingSettlement()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
+
+    # ── 일일 요약 (하루 1건) ──────────────────────────────────
+    # ① 정산 결과 ② 직전 요약 이후 노드 유입 ③ 현황 ④ 수령지갑 잔고.
+    # ②는 예전 "노드 보상 24시간 누적", ③은 예전 "일일 현황"이 들어온 자리다.
+    MSG="🔥 [XP Vault] 일일 요약 — 에폭 정산 완료${nl}"
+    MSG+="정산액: $(xpfmt $PEND) XP${nl}"
+    # wei 단위 차이는 bash 64비트를 넘어 python 으로 뺀다.
+    # 표기는 반드시 xpfmt 으로 — 한 메시지 안에서 자릿수가 갈리면 읽히지 않는다.
+    B_DELTA=$(python3 -c "print($B1-$B0)")
+    D_DELTA=$(python3 -c "print($D1-$D0)")
+    MSG+="→ 소각: $(xpfmt $B_DELTA) XP · 스테이커: $(xpfmt $D_DELTA) XP${nl}"
+    MSG+="누적 소각: $(xpfmt $B1) XP${nl}"
+    MSG+="이번 정산 기준 APR  ${S_APR}%${nl}"
+    if [ "${#COLLECTORS[@]}" -gt 0 ]; then
+      ACC=$(cat "$ACC_FILE" 2>/dev/null || echo 0)
+      if digest_ever_sent; then
+        # 임계값 미만이면 숙이지 않고 표시만 한다 — 유입이 멈춘 날이
+        # 조용해지면 그것이야말로 놓치면 안 되는 신호다.
+        WARN=""
+        python3 -c "exit(0 if int('$ACC') < int('${DEPOSIT_ALERT_WEI:-1000000000000000000000}') else 1)" \
+          && WARN="  ⚠ 평소보다 적음"
+        MSG+="${nl}🟢 노드 보상 유입 (직전 요약 이후): $(xpfmt $ACC) XP${WARN}${nl}"
+      else
+        MSG+="${nl}🟢 노드 보상 유입: $(xpfmt $ACC) XP  (집계 시작 이후 부분 집계)${nl}"
+      fi
+    fi
+    MSG+="${nl}$(status_block "$S_TVL" "$S_CAP" "$S_PR" "$S_RR" "$S_HELD" "$S_PEND" "$B1" "$S_NEXT")"
+    [ "${#COLLECTORS[@]}" -gt 0 ] && MSG+="${nl}  수령지갑 (${#COLLECTORS[@]}개)${BAL_LINES}"
+    notify "$MSG"
+    # 요약이 나갔으니 유입 집계를 새로 시작하고, monitor.sh 가 같은 날
+    # 중복으로 보내지 않도록 표시한다.
+    echo 0 > "$ACC_FILE"
+    mark_digest_sent
     ./record-stats.sh || log "record-stats failed (non-fatal)"
   else
     log "settle FAILED"

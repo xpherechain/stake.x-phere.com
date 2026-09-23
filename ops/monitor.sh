@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================
 # 상태 점검 + 이상 시 Slack/Telegram 알림. cron 으로 30분~4시간마다.
+# 정기 "일일 요약"은 정산 직후 daily-settle.sh 가 보낸다. 여기서는 그날
+# 정산이 없었을 때만 대신 내보낸다 — 둘 다 보내면 합친 의미가 없다.
 # 점검: ①정산 지연(nextSettleTime 초과) ②지급능력 불변식 ③수령지갑 잔고 누적
 # 알림 채널: SLACK_WEBHOOK / TG_TOKEN+TG_CHAT — 설정된 채널 모두로 발송.
 # ============================================================
@@ -10,6 +12,8 @@ cd "$(dirname "$0")"
 # (cron, sudo -u 는 로그인 셸을 거치지 않아 ~/.foundry/bin 이 빠진다)
 export PATH="$PATH:$HOME/.foundry/bin:/home/xpops/.foundry/bin:/usr/local/bin"
 set -a; source ./.env; set +a
+# notify() / xpfmt() / status_block() / 일일 요약 중복 방지 플래그
+source ./notify-lib.sh
 : "${RPC:?}"; : "${DIST:?}"; : "${VAULT:?}"; : "${WXP:?}"
 c() { cast call "$1" "$2" ${3:-} --rpc-url "$RPC" | awk '{print $1}'; }
 
@@ -27,24 +31,6 @@ PY
   fi
   exit 1
 fi
-
-notify() { # $1 = multiline message
-  if [ -n "${SLACK_WEBHOOK:-}" ]; then
-    SLACK_WEBHOOK="$SLACK_WEBHOOK" python3 - "$1" <<'PY' || true
-import json, os, sys, urllib.request
-req = urllib.request.Request(
-    os.environ["SLACK_WEBHOOK"],
-    json.dumps({"text": sys.argv[1]}).encode(),
-    {"Content-Type": "application/json"},
-)
-urllib.request.urlopen(req, timeout=10)
-PY
-  fi
-  if [ -n "${TG_TOKEN:-}" ] && [ -n "${TG_CHAT:-}" ]; then
-    curl -s "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
-      --data-urlencode "chat_id=${TG_CHAT}" --data-urlencode "text=$1" >/dev/null || true
-  fi
-}
 
 now=$(date -u +%s); alerts=""
 nl=$'\n'
@@ -94,25 +80,13 @@ if [ -n "${COLLECTOR_PK:-}" ]; then
 fi
 
 # 현황 블록. 경보만 보내면 "그래서 지금 얼마인데"를 매번 손으로 조회하게 된다.
-# 이미 위에서 읽은 값들이라 RPC 호출이 늘지 않는다.
-xp() { cast to-unit "${1:-0}" ether | awk '{printf "%\047.2f", $1}'; }
+# 이미 위에서 읽은 값들을 넘기므로 RPC 호출이 늘지 않는다. 블록 모양은
+# notify-lib.sh 한 곳에서만 만든다 — 정산 요약과 여기가 갈리면 안 된다.
 cap=$(c "$VAULT" "stakeCap()(uint256)")
 burned=$(c "$DIST" "totalBurned()(uint256)")
-free=$(python3 -c "print(max(0, $held - $oblig))")
-util=$(python3 -c "print(f'{$staked/$cap*100:.2f}' if $cap else '0')")
-till=$(python3 -c "
-d=$next-$now
-print('%dh %dm 후' % (d//3600,(d%3600)//60) if d>0 else '%dh %dm 지연' % (-d//3600,(-d%3600)//60))")
-
-state="📊 현황 ($(date -u +%m-%d\ %H:%M)Z)${nl}"
-state+="  총 스테이킹   $(xp $staked) XP  (캡 $(xp $cap) · ${util}%)${nl}"
-state+="  인출 대기     $(xp $predeem) XP${nl}"
-state+="  이자 대기     $(xp $reserves) XP  ← 미청구 보상${nl}"
-state+="  볼트 보유     $(xp $held) XP  (여유 $(xp $free))${nl}"
-state+="  정산 대기     $(xp $pend) XP  → 다음 정산 ${till}${nl}"
-state+="  누적 소각     $(xp $burned) XP"
+state=$(status_block "$staked" "$cap" "$predeem" "$reserves" "$held" "$pend" "$burned" "$next")
 if [ -n "${COLLECTOR_PK:-}" ]; then
-  state+="${nl}  수령지갑      $(xp ${cb:-0}) XP"
+  state+="${nl}  수령지갑      $(xpfmt ${cb:-0}) XP"
 fi
 
 if [ -n "$alerts" ]; then
@@ -124,6 +98,12 @@ echo "[$(date -u +%FT%TZ)] ok"
 echo "$state"
 # 하루 한 번(09:00 UTC 근처) 이상 없어도 현황을 남긴다. 조용한 것과
 # 죽은 것을 구분할 수 없으면 감시가 아니다.
-if [ "${MONITOR_DIGEST:-1}" = "1" ] && [ "$(date -u +%H)" = "09" ] && [ "$(date -u +%M)" -lt 30 ]; then
-  notify "[XP Vault] 일일 현황${nl}${state}"
+#
+# 단, 그날 정산이 이미 요약을 보냈으면 보내지 않는다. 정산은 보통 이 시각
+# 전에 끝나므로(06시대) 평소에는 이 알림이 나가지 않는 것이 정상이고,
+# 나갔다면 그 자체가 "오늘 정산이 없었다"는 신호다.
+if [ "${MONITOR_DIGEST:-1}" = "1" ] && [ "$(date -u +%H)" = "09" ] && [ "$(date -u +%M)" -lt 30 ] \
+   && ! digest_sent_today; then
+  notify "⚠️ [XP Vault] 일일 요약 — 오늘 아직 정산이 없습니다${nl}${state}"
+  mark_digest_sent
 fi
