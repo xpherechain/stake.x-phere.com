@@ -1,7 +1,9 @@
 /* ============================================================
-   Deployment config — Xphere MAINNET (guarded launch).
-   Cap starts at 2M XP during the external audit window and is
-   raised to 35M via Timelock (setStakeCap) at full open.
+   Deployment config — Xphere MAINNET.
+   Cap history, all via Timelock (setStakeCap), 48h delay honoured
+   each time: 2M at the guarded launch (2026-08-03) → 35M
+   (2026-08-14) → 70M (2026-09-16). stakeCapXP below must track
+   whatever stakeCap() currently returns.
    ============================================================ */
 window.XP_CONFIG = {
   chain: {
@@ -23,7 +25,13 @@ window.XP_CONFIG = {
   // Governance holders (admin console role checks).
   governance: {
     timelock: "0x0737B4EEB4dA0920cE7CeE2D1eF64E0f57211F4E",
-    safe: "0x134f29183fD9399060A3B3AE108f65D4ba23aa42", // interim governance EOA
+    // A single EOA, not a multisig — there is no contract code at this address
+    // on-chain. It holds PAUSER and PARTNER_MANAGER on the vault, and it is the
+    // sole proposer, executor AND canceller on the timelock, so one key both
+    // schedules and executes every parameter change; the 48h delay is the only
+    // thing standing between it and the vault. Previously named `safe`, which
+    // read as a Gnosis Safe and is not one. Nothing in the site reads this key.
+    admin: "0x134f29183fD9399060A3B3AE108f65D4ba23aa42",
   },
 
   // live:true → no preview modal/ribbon, real on-chain data.
@@ -36,18 +44,25 @@ window.XP_CONFIG = {
   // deposit, so progress is measured against it rather than a marketing
   // target — at 100% the two must not disagree.
   //
-  // The cap is deliberately held at 35M through the event; nothing here
-  // should imply an imminent raise. What does free up is maturing unstake
-  // requests, and that is a fact with a date, so it is worth saying.
+  // The cap sits at 70M and nothing here should imply an imminent raise —
+  // a raise costs APR permanently, because APR is a function of the cap and
+  // the daily inflow only (see ops/raise-cap.sh plan).
   round: {
     enabled: true,
     label: "Round 4",
     nearFullPct: 99, // switch to the urgent state past this fill level
     fullNote: "Deposits already made keep earning — nothing changes for them.",
-    // No date here on purpose. Requests mature continuously on a 7-day
-    // cooldown, so naming "the next batch" pins the copy to a day that passes
-    // — this line sat three weeks stale on the live site saying Aug 22.
-    reopenNote: "Capacity frees up as unstaking requests mature.",
+    // No date here on purpose. Requests are made continuously, so naming "the
+    // next batch" pins the copy to a day that passes — this line sat three
+    // weeks stale on the live site saying Aug 22.
+    //
+    // The old wording said capacity frees up as requests *mature*, which is
+    // backwards: requestRedeem() does `totalStakedAssets -= assets` up front,
+    // and maxDeposit is `stakeCap - totalStakedAssets`, so the seat opens when
+    // the request is made and the 7-day cooldown frees nothing further. Anyone
+    // who read it as "wait for the pending 202k to land" was waiting for a
+    // seat that had already been taken.
+    reopenNote: "Capacity opens the moment someone requests an unstake, not when their cooldown ends.",
   },
 
   // Where someone with no XP goes to get some. Leave `url` empty to drop the

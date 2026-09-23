@@ -16,10 +16,10 @@ window.XP_CONFIG = {
     distributor: "0x2867124C2DF80E3e559a0CfFd4Aaf998aeD19372",
     commission: "0x0000000000000000000000000000000000000000", // off-chain, not deployed
   },
-  // testnet governance holders (deployer doubles as Safe on testnet)
+  // testnet governance holders (the deployer holds these roles on testnet)
   governance: {
     timelock: "0xa72C9b9a76b97E3835fe97e11670255a30c1Fb06",
-    safe: "0xfcbCc0A3a5ba5b343dA3d621636Ee3BCB2a57e36",
+    admin: "0xfcbCc0A3a5ba5b343dA3d621636Ee3BCB2a57e36",
   },
   launch: { live: true }, // real testnet data, no preview modal
   partners: ["ankr", "nansen"],
