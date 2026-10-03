@@ -16,6 +16,9 @@ set -a; source ./.env; set +a
 source ./notify-lib.sh
 : "${RPC:?}"; : "${DIST:?}"; : "${VAULT:?}"; : "${WXP:?}"
 c() { cast call "$1" "$2" ${3:-} --rpc-url "$RPC" | awk '{print $1}'; }
+# 같은 블록에서 읽어야 하는 값들. 네 번의 RPC 왕복 사이에 블록이 넘어가면
+# 서로 다른 시점의 숫자를 비교하게 된다.
+cb() { cast call "$1" "$2" ${3:-} --rpc-url "$RPC" --block "$BLK" | awk '{print $1}'; }
 
 # 설정 유효성: 플레이스홀더면 감시 자체가 무의미하므로 즉시 경보
 ZERO=0x0000000000000000000000000000000000000000
@@ -43,13 +46,22 @@ if [ "$now" -gt "$((next + 21600))" ] && [ "$pend" != "0" ]; then
 fi
 
 # ② 지급능력 불변식: WXP.balanceOf(vault) >= staked + pending + reserves
-held=$(c "$WXP" "balanceOf(address)(uint256)" "$VAULT")
-staked=$(c "$VAULT" "totalAssets()(uint256)")
-predeem=$(c "$VAULT" "totalPendingRedeem()(uint256)")
-reserves=$(c "$VAULT" "rewardReserves()(uint256)")
+#
+#    네 값을 한 블록에 고정해서 읽는다. 각각 latest 로 읽으면 Xphere 의 1초
+#    블록에서 읽는 사이에 블록이 넘어가고, 그 사이에 예치가 들어오면 잔고는
+#    예치 전, 의무는 예치 후가 되어 정확히 예치액만큼 "부족"해 보인다.
+#    2026-10-03 에 400,000 XP 예치가 두 읽기 사이에 끼어 이 경보가 오발했다.
+#    두 블록 각각은 0 wei 오차로 멀쩡했다.
+#
+#    이건 이 시스템에서 가장 큰 경보다. 틀리면 아무도 안 믿게 된다.
+BLK=$(cast block-number --rpc-url "$RPC")
+held=$(cb "$WXP" "balanceOf(address)(uint256)" "$VAULT")
+staked=$(cb "$VAULT" "totalAssets()(uint256)")
+predeem=$(cb "$VAULT" "totalPendingRedeem()(uint256)")
+reserves=$(cb "$VAULT" "rewardReserves()(uint256)")
 oblig=$(python3 -c "print($staked + $predeem + $reserves)")
 if python3 -c "exit(0 if $held < $oblig else 1)"; then
-  alerts+="🚨 불변식 위반: WXP held=$held < 의무=$oblig — 즉시 확인 필요${nl}"
+  alerts+="🚨 불변식 위반 (블록 $BLK): WXP held=$held < 의무=$oblig — 즉시 확인 필요${nl}"
 fi
 
 # ③ 수령지갑 잔고 — 전액 스윕 모드에서만 누적을 이상신호로 본다.
