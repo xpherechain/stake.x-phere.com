@@ -85,7 +85,7 @@ window.XP_CONFIG = {
   // the comments give the KST the campaign was booked in.
   // Set enabled:false to pull it early.
   banner: {
-    enabled: true,
+    enabled: false, // Nansen campaign ended 2026-10-16
     badge: "CAMPAIGN",
     title: "Nansen × XPHERE Staking Campaign is LIVE",
     // The vault has been at its cap since the 70M raise, so the original copy
