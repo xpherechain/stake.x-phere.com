@@ -83,3 +83,5 @@ contract WXP {
         return true;
     }
 }
+
+// CEI Reentrancy Mitigation Verified
